@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planillas Alumnos</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Unbounded:wght@400;700;900&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg:     #0b0c0e;
+  --bg2:    #111215;
+  --bg3:    #17181c;
+  --bg4:    #1e1f24;
+  --bg5:    #26272e;
+  --border: rgba(255,255,255,0.06);
+  --bord2:  rgba(255,255,255,0.11);
+  --text:   #ebebeb;
+  --muted:  #7a7b85;
+  --muted2: #4a4b55;
+  --lime:   #c9f43c;
+  --orange: #ff8c42;
+  --blue:   #5eb0ff;
+  --purple: #b06cff;
+  --teal:   #4dffc3;
+  --pink:   #ff6cac;
+  --yellow: #ffd166;
+  --red:    #ff5c5c;
+  --r:      10px;
+  --r2:     16px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:'Instrument Sans',sans-serif;display:flex;}
+
+/* SIDEBAR */
+#sidebar{width:200px;min-width:200px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;}
+.sb-logo{padding:20px 14px 14px;border-bottom:1px solid var(--border);}
+.sb-label{font-family:'Unbounded',sans-serif;font-size:8px;font-weight:700;letter-spacing:.18em;color:var(--lime);text-transform:uppercase;}
+.sb-title{font-family:'Unbounded',sans-serif;font-size:15px;font-weight:900;line-height:1.15;margin-top:5px;}
+.sb-status{display:flex;align-items:center;gap:5px;margin-top:6px;font-size:9px;color:var(--muted);font-family:'DM Mono',monospace;}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--muted2);flex-shrink:0;transition:background .3s;}
+.status-dot.ok{background:var(--lime);}
+.status-dot.err{background:var(--red);}
+.status-dot.loading{background:var(--yellow);animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.sb-search{padding:8px 10px;border-bottom:1px solid var(--border);}
+.sb-search input{width:100%;background:var(--bg3);border:1px solid var(--bord2);border-radius:var(--r);padding:7px 10px;font-size:11px;color:var(--text);font-family:'DM Mono',monospace;outline:none;transition:border-color .15s;}
+.sb-search input:focus{border-color:var(--lime);}
+.sb-search input:disabled{opacity:.4;}
+.sb-refresh{padding:6px 10px;border-bottom:1px solid var(--border);}
+.btn-refresh{width:100%;padding:6px;background:transparent;border:1px solid var(--bord2);border-radius:var(--r);color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;cursor:pointer;transition:all .15s;letter-spacing:.05em;}
+.btn-refresh:hover{border-color:var(--lime);color:var(--lime);}
+.btn-refresh:disabled{opacity:.3;cursor:not-allowed;}
+.sb-list{overflow-y:auto;flex:1;padding:4px 0;}
+.sb-list::-webkit-scrollbar{width:3px;}
+.sb-list::-webkit-scrollbar-thumb{background:var(--bg5);border-radius:3px;}
+.pat-row{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;cursor:pointer;transition:all .12s;border-left:2px solid transparent;font-size:11px;font-weight:500;color:var(--muted);letter-spacing:.01em;}
+.pat-row:hover{background:var(--bg3);color:var(--text);}
+.pat-row.active{background:var(--bg3);color:var(--lime);border-left-color:var(--lime);}
+.pat-badge{font-size:9px;font-family:'DM Mono',monospace;padding:2px 6px;border-radius:20px;background:var(--bg4);color:var(--muted2);}
+.pat-row.active .pat-badge{background:rgba(201,244,60,.12);color:var(--lime);}
+
+/* MAIN */
+#main{flex:1;overflow-y:auto;overflow-x:hidden;}
+#main::-webkit-scrollbar{width:4px;}
+#main::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:4px;}
+
+/* LOADING / EMPTY STATE */
+.state-center{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--muted);}
+.state-icon{font-size:36px;opacity:.25;}
+.state-text{font-size:13px;}
+.state-sub{font-size:11px;color:var(--muted2);font-family:'DM Mono',monospace;}
+.spinner{width:28px;height:28px;border:2px solid var(--bg4);border-top-color:var(--lime);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* HEADER */
+.top-bar{display:flex;align-items:center;justify-content:space-between;padding:24px 28px 0;gap:12px;flex-wrap:wrap;}
+.pat-name{font-family:'Unbounded',sans-serif;font-size:26px;font-weight:900;line-height:1;letter-spacing:-.01em;}
+.week-tabs{display:flex;gap:5px;flex-wrap:wrap;}
+.wtab{padding:5px 13px;font-size:10px;font-weight:600;border-radius:20px;border:1px solid var(--bord2);cursor:pointer;transition:all .12s;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.06em;background:transparent;}
+.wtab:hover{border-color:var(--lime);color:var(--lime);}
+.wtab.active{background:var(--lime);border-color:var(--lime);color:#0b0c0e;font-weight:700;}
+
+/* STAT CARDS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:18px 28px 0;}
+.stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:14px 16px;position:relative;overflow:hidden;}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent,var(--lime));opacity:.6;}
+.stat-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:8px;}
+.stat-val{font-family:'Unbounded',sans-serif;font-size:20px;font-weight:900;line-height:1;}
+.stat-unit{font-size:10px;font-weight:400;color:var(--muted);margin-left:3px;font-family:'DM Mono',monospace;}
+
+/* CHARTS */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 28px 0;}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:18px 20px;}
+.card-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:14px;}
+.chart-wrap{position:relative;width:100%;height:240px;}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);}
+.leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+.progress-wrap{padding:0 28px 0;}
+.prog-wrap{position:relative;width:100%;height:200px;}
+
+/* TABLE */
+.table-wrap{padding:14px 28px 32px;}
+.day-block{margin-bottom:18px;}
+.day-hdr{font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--lime);padding:8px 0 6px;border-bottom:1px solid var(--border);margin-bottom:0;display:flex;align-items:center;gap:8px;}
+.day-hdr::after{content:'';flex:1;height:1px;background:var(--border);}
+table{width:100%;border-collapse:collapse;font-size:11px;}
+thead th{padding:7px 10px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--muted2);text-align:left;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s;}
+tbody tr:hover{background:var(--bg3);}
+td{padding:8px 10px;}
+td.mono{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);}
+td.vol{font-family:'DM Mono',monospace;font-size:10px;color:var(--lime);font-weight:500;}
+td.carga-td{font-family:'DM Mono',monospace;font-size:10px;color:var(--orange);font-weight:500;}
+td.dash{color:var(--muted2);font-family:'DM Mono',monospace;font-size:10px;}
+.tipo-pill{display:inline-block;padding:2px 7px;border-radius:4px;font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
+
+/* ERROR BANNER */
+.err-banner{margin:12px 28px 0;padding:10px 14px;background:rgba(255,92,92,.1);border:1px solid rgba(255,92,92,.25);border-radius:var(--r);font-size:11px;color:#ff8c8c;font-family:'DM Mono',monospace;}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div class="sb-logo">
+    <div class="sb-label">Training</div>
+    <div class="sb-title">Planillas<br>Alumnos</div>
+    <div class="sb-status">
+      <span class="status-dot loading" id="statusDot"></span>
+      <span id="statusText">Conectando...</span>
+    </div>
+  </div>
+  <div class="sb-refresh">
+    <button class="btn-refresh" id="btnRefresh" onclick="loadData()" disabled>↻ Actualizar</button>
+  </div>
+  <div class="sb-search">
+    <input type="text" id="srch" placeholder="Buscar alumno..." oninput="filterList(this.value)" disabled>
+  </div>
+  <div class="sb-list" id="sbList"></div>
+</div>
+
+<div id="main">
+  <div id="content">
+    <div class="state-center">
+      <div class="spinner"></div>
+      <div class="state-text">Cargando datos...</div>
+      <div class="state-sub">Conectando con Google Sheets</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── CONFIGURACIÓN ──────────────────────────────────────────────
+// Reemplazar con la URL del Apps Script desplegado como web app
+const APPS_SCRIPT_URL = 'TU_URL_AQUI';
+// ────────────────────────────────────────────────────────────────
+
+const CAT_COLOR = {
+  'EMPUJE':       '#ff8c42',
+  'TRACCION':     '#5eb0ff',
+  'DOM. RODILLA': '#c9f43c',
+  'DOM. CADERA':  '#b06cff',
+  'POTENCIA':     '#ffd166',
+  'ACCESORIO':    '#ff6cac',
+  'MOVILIDAD':    '#4dffc3',
+  'GLUTEO':       '#ffb347',
+  'METABOLICO':   '#ff5c5c',
+  'SIN CATEGORÍA':'#555',
+};
+const ALL_CATS = Object.keys(CAT_COLOR);
+
+let DATA = null;
+let curPat = null, curWeek = 1;
+let charts = {};
+
+// ─── CARGA DE DATOS ─────────────────────────────────────────────
+async function loadData() {
+  setStatus('loading', 'Cargando...');
+  document.getElementById('btnRefresh').disabled = true;
+  document.getElementById('srch').disabled = true;
+
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, { redirect: 'follow' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const raw = await res.json();
+
+    // Normalizar estructura (exList → exercises)
+    DATA = {};
+    Object.entries(raw).forEach(([pat, weeks]) => {
+      DATA[pat] = weeks.map(w => ({
+        week:      w.week      || w.semana,
+        vol:       w.vol       || w.volByCat  || {},
+        carga:     w.carga     || w.cargaByCat || {},
+        exercises: (w.exercises || w.exList   || []).filter(e => e.ejercicio),
+      }));
+    });
+
+    setStatus('ok', `${Object.keys(DATA).length} alumnos`);
+    document.getElementById('btnRefresh').disabled = false;
+    document.getElementById('srch').disabled = false;
+    buildList();
+
+    // Si había un paciente seleccionado, re-renderizar
+    if (curPat && DATA[curPat]) render();
+    else showWelcome();
+
+  } catch(err) {
+    setStatus('err', 'Error de conexión');
+    document.getElementById('btnRefresh').disabled = false;
+    document.getElementById('content').innerHTML = `
+      <div class="state-center">
+        <div class="state-icon">⚠</div>
+        <div class="state-text">No se pudo conectar</div>
+        <div class="state-sub">${err.message}</div>
+      </div>`;
+    console.error(err);
+  }
+}
+
+function setStatus(type, text) {
+  const dot = document.getElementById('statusDot');
+  dot.className = 'status-dot ' + type;
+  document.getElementById('statusText').textContent = text;
+}
+
+function showWelcome() {
+  document.getElementById('content').innerHTML = `
+    <div class="state-center">
+      <div class="state-icon">🏋️</div>
+      <div class="state-text">Selecciona un alumno</div>
+    </div>`;
+}
+
+// ─── SIDEBAR ────────────────────────────────────────────────────
+function buildList(filter='') {
+  if (!DATA) return;
+  const el = document.getElementById('sbList');
+  el.innerHTML = '';
+  const fl = filter.toLowerCase();
+  Object.keys(DATA).forEach(name => {
+    if (fl && !name.toLowerCase().includes(fl)) return;
+    const w = DATA[name].length;
+    const d = document.createElement('div');
+    d.className = 'pat-row' + (name === curPat ? ' active' : '');
+    d.innerHTML = `<span>${name.trim()}</span><span class="pat-badge">${w}S</span>`;
+    d.onclick = () => selectPat(name);
+    el.appendChild(d);
+  });
+}
+
+function filterList(v) { buildList(v); }
+
+function selectPat(name) {
+  curPat = name;
+  curWeek = DATA[name][0].week;
+  buildList(document.getElementById('srch').value);
+  render();
+}
+
+function selectWeek(w) { curWeek = w; render(); }
+
+// ─── RENDER ─────────────────────────────────────────────────────
+function destroyCharts() {
+  Object.values(charts).forEach(c => { try { c.destroy(); } catch(e){} });
+  charts = {};
+}
+
+function render() {
+  destroyCharts();
+  const weeks = DATA[curPat];
+  const wd = weeks.find(w => w.week === curWeek) || weeks[0];
+  curWeek = wd.week;
+
+  const exs = wd.exercises || [];
+  const totalVol   = Object.values(wd.vol).reduce((a,b)=>a+b,0);
+  const totalCarga = Object.values(wd.carga).reduce((a,b)=>a+b,0);
+  const dias = new Set(exs.map(e=>e.dia)).size;
+
+  const tabsHtml = weeks.map(w =>
+    `<button class="wtab${w.week===curWeek?' active':''}" onclick="selectWeek(${w.week})">S${w.week}</button>`
+  ).join('');
+
+  const progressHtml = weeks.length > 1 ? `
+    <div class="progress-wrap">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title">Progresión semanal — Vol. efectivo</div>
+        <div class="prog-wrap"><canvas id="progC"></canvas></div>
+      </div>
+    </div>` : '';
+
+  document.getElementById('content').innerHTML = `
+    <div class="top-bar">
+      <div class="pat-name">${curPat.trim()}</div>
+      <div class="week-tabs">${tabsHtml}</div>
+    </div>
+    <div class="stats-row">
+      <div class="stat" style="--accent:var(--lime)">
+        <div class="stat-label">Vol. Efectivo</div>
+        <div class="stat-val">${Math.round(totalVol)}<span class="stat-unit">reps</span></div>
+      </div>
+      <div class="stat" style="--accent:var(--orange)">
+        <div class="stat-label">Carga Total</div>
+        <div class="stat-val">${Math.round(totalCarga).toLocaleString('es')}<span class="stat-unit">kg</span></div>
+      </div>
+      <div class="stat" style="--accent:var(--blue)">
+        <div class="stat-label">Ejercicios</div>
+        <div class="stat-val">${exs.length}</div>
+      </div>
+      <div class="stat" style="--accent:var(--purple)">
+        <div class="stat-label">Días</div>
+        <div class="stat-val">${dias}</div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Balance — Vol. Efectivo</div>
+        <div class="chart-wrap"><canvas id="radarC"></canvas></div>
+        <div class="legend" id="radarLeg"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Volumen por categoría</div>
+        <div class="chart-wrap"><canvas id="barC"></canvas></div>
+      </div>
+    </div>
+    ${progressHtml}
+    <div class="table-wrap">
+      <div class="card">
+        <div class="card-title">Ejercicios — Semana ${curWeek}</div>
+        ${buildTable(exs)}
+      </div>
+    </div>`;
+
+  renderRadar(wd);
+  renderBar(wd);
+  if (weeks.length > 1) renderProgress(weeks);
+}
+
+function renderRadar(wd) {
+  const cats = ALL_CATS.filter(c => wd.vol[c] > 0);
+  if (!cats.length) return;
+  charts.radar = new Chart(document.getElementById('radarC'), {
+    type: 'radar',
+    data: {
+      labels: cats,
+      datasets: [{
+        data: cats.map(c => wd.vol[c] || 0),
+        backgroundColor: 'rgba(201,244,60,0.1)',
+        borderColor: '#c9f43c', borderWidth: 2,
+        pointBackgroundColor: cats.map(c => CAT_COLOR[c]),
+        pointRadius: 5, pointHoverRadius: 7,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          ticks: { display: false },
+          grid: { color: 'rgba(255,255,255,0.06)' },
+          angleLines: { color: 'rgba(255,255,255,0.06)' },
+          pointLabels: { font: { size: 9, family: 'Instrument Sans', weight: '600' }, color: '#7a7b85' }
+        }
+      }
+    }
+  });
+  document.getElementById('radarLeg').innerHTML = cats.map(c =>
+    `<div class="leg-item">
+      <span class="leg-dot" style="background:${CAT_COLOR[c]}"></span>
+      <span>${c}: <b style="color:${CAT_COLOR[c]}">${Math.round(wd.vol[c])}</b></span>
+    </div>`
+  ).join('');
+}
+
+function renderBar(wd) {
+  const cats = ALL_CATS.filter(c => wd.vol[c] > 0);
+  if (!cats.length) return;
+  const colors = cats.map(c => CAT_COLOR[c]);
+  charts.bar = new Chart(document.getElementById('barC'), {
+    type: 'bar',
+    data: {
+      labels: cats,
+      datasets: [{ data: cats.map(c => wd.vol[c]||0), backgroundColor: colors.map(c=>c+'33'), borderColor: colors, borderWidth: 1.5, borderRadius: 6 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#555', font: { size: 8, family: 'DM Mono' } }, grid: { display: false } },
+        y: { ticks: { color: '#4a4b55', font: { size: 8, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+function renderProgress(weeks) {
+  const activeCats = ALL_CATS.filter(c => weeks.some(w => (w.vol[c]||0) > 0)).slice(0,6);
+  charts.prog = new Chart(document.getElementById('progC'), {
+    type: 'line',
+    data: {
+      labels: weeks.map(w => `S${w.week}`),
+      datasets: activeCats.map(cat => ({
+        label: cat, data: weeks.map(w => w.vol[cat]||0),
+        borderColor: CAT_COLOR[cat], backgroundColor: CAT_COLOR[cat]+'18',
+        borderWidth: 2, pointRadius: 4, pointBackgroundColor: CAT_COLOR[cat],
+        tension: 0.35, fill: false,
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, position: 'bottom', labels: { color: '#7a7b85', font: { size: 9, family: 'DM Mono' }, boxWidth: 8, padding: 12, usePointStyle: true } } },
+      scales: {
+        x: { ticks: { color: '#555', font: { size: 9, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#4a4b55', font: { size: 9, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+function buildTable(exs) {
+  if (!exs.length) return '<div style="padding:30px;text-align:center;color:var(--muted);font-size:12px;">Sin datos</div>';
+  const days = [...new Set(exs.map(e=>e.dia))].sort((a,b)=>a-b);
+  return days.map(dia => {
+    const rows = exs.filter(e=>e.dia===dia).map(ex => {
+      const c = CAT_COLOR[ex.tipo]||'#555';
+      return `<tr>
+        <td style="font-weight:500;font-size:11px">${ex.ejercicio||'—'}</td>
+        <td><span class="tipo-pill" style="background:${c}22;color:${c};border:1px solid ${c}44">${ex.tipo}</span></td>
+        <td class="mono">${ex.series||'—'}</td>
+        <td class="mono">${ex.repet_raw||'—'}</td>
+        <td class="mono">${ex.carga_raw||'—'}</td>
+        <td class="${ex.vol_ef!=null?'vol':'dash'}">${ex.vol_ef!=null?ex.vol_ef:'—'}</td>
+        <td class="${ex.carga_total!=null?'carga-td':'dash'}">${ex.carga_total!=null?Math.round(ex.carga_total):'—'}</td>
+      </tr>`;
+    }).join('');
+    return `<div class="day-block">
+      <div class="day-hdr">Día ${dia}</div>
+      <table>
+        <thead><tr><th>Ejercicio</th><th>Tipo</th><th>Series</th><th>Reps</th><th>Carga</th><th>Vol. Ef.</th><th>Carga total</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+}
+
+// Arrancar
+loadData();
+</script>
+</body>
+</html>
