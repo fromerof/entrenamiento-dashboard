@@ -225,10 +225,11 @@ async function loadData() {
     Object.entries(raw).forEach(([pat, weeks]) => {
       DATA[pat] = weeks.map(w => ({
         week:      w.week      || w.semana,
-        vol:       w.vol       || w.volByCat  || {},
-        carga:     w.carga     || w.cargaByCat || {},
+        vol:       w.vol       || w.volByCat   || {},
+        carga:     w.carga     || w.cargaByCat  || {},
+        series:    w.series    || {},
         bienestar: w.bienestar || null,
-        exercises: (w.exercises || w.exList   || []).filter(e => e.ejercicio),
+        exercises: (w.exercises || w.exList || []).filter(e => e.ejercicio),
       }));
     });
 
@@ -356,9 +357,10 @@ function render() {
       </div>
       <div class="card">
         <div class="card-top">
-          <div class="card-title">Por categoría</div>
+          <div class="card-title">Resumen por categoría</div>
           <div class="bar-tabs">
             <button class="btab${curBarTab==='vol'?' active':''}" onclick="switchBarTab('vol')">Volumen</button>
+            <button class="btab${curBarTab==='ser'?' active':''}" onclick="switchBarTab('ser')">Series</button>
             <button class="btab${curBarTab==='carga'?' active':''}" onclick="switchBarTab('carga')">Carga</button>
             <button class="btab${curBarTab==='bien'?' active':''}" onclick="switchBarTab('bien')">Bienestar</button>
           </div>
@@ -383,11 +385,9 @@ function switchBarTab(tab) {
   curBarTab = tab;
   if (!curPat || !DATA[curPat]) return;
   const wd = DATA[curPat].find(w => w.week === curWeek) || DATA[curPat][0];
-  // Actualizar botones
   document.querySelectorAll('.btab').forEach(b => {
-    b.classList.toggle('active', b.textContent.toLowerCase().startsWith(
-      tab === 'vol' ? 'vol' : tab === 'carga' ? 'car' : 'bi'
-    ));
+    const map = { vol:'volumen', ser:'series', carga:'carga', bien:'bienestar' };
+    b.classList.toggle('active', b.textContent.toLowerCase() === map[tab]);
   });
   if (charts.bar) { charts.bar.destroy(); delete charts.bar; }
   renderBarTab(wd);
@@ -395,8 +395,10 @@ function switchBarTab(tab) {
 
 function renderBarTab(wd) {
   if (curBarTab === 'bien') { renderBienestar(wd); return; }
-  const data = curBarTab === 'vol' ? wd.vol : wd.carga;
-  const cats = ALL_CATS.filter(c => (data[c] || 0) > 0);
+  const dataMap = { vol: wd.vol, ser: wd.series || {}, carga: wd.carga };
+  const unitMap = { vol: 'reps', ser: 'series', carga: 'kg' };
+  const data    = dataMap[curBarTab] || {};
+  const cats    = ALL_CATS.filter(c => (data[c] || 0) > 0);
   if (!cats.length) return;
   const colors = cats.map(c => CAT_COLOR[c]);
   charts.bar = new Chart(document.getElementById('barC'), {
@@ -408,7 +410,7 @@ function renderBarTab(wd) {
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { callbacks: {
-        label: ctx => ` ${Math.round(ctx.parsed.y).toLocaleString('es')}${curBarTab==='carga'?' kg':' reps'}`
+        label: ctx => ` ${Math.round(ctx.parsed.y).toLocaleString('es')} ${unitMap[curBarTab]}`
       }}},
       scales: {
         x: { ticks: { color: '#555', font: { size: 8, family: 'DM Mono' } }, grid: { display: false } },
