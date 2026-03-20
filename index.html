@@ -94,6 +94,7 @@ body{background:var(--bg);color:var(--text);font-family:'Instrument Sans',sans-s
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 28px 0;}
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:18px 20px;}
 .card-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:14px;}
+.card-top .card-title{margin-bottom:0;}
 .chart-wrap{position:relative;width:100%;height:240px;}
 .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
 .leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);}
@@ -119,6 +120,14 @@ td.dash{color:var(--muted2);font-family:'DM Mono',monospace;font-size:10px;}
 
 /* ERROR BANNER */
 .err-banner{margin:12px 28px 0;padding:10px 14px;background:rgba(255,92,92,.1);border:1px solid rgba(255,92,92,.25);border-radius:var(--r);font-size:11px;color:#ff8c8c;font-family:'DM Mono',monospace;}
+
+/* BAR TABS */
+.card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.card-top .card-title{margin-bottom:0;}
+.bar-tabs{display:flex;gap:4px;}
+.btab{padding:4px 10px;font-size:9px;font-weight:600;border-radius:20px;border:1px solid var(--bord2);cursor:pointer;transition:all .12s;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.05em;background:transparent;}
+.btab:hover{border-color:var(--lime);color:var(--lime);}
+.btab.active{background:var(--lime);border-color:var(--lime);color:#0b0c0e;font-weight:700;}
 </style>
 </head>
 <body>
@@ -172,7 +181,7 @@ const CAT_COLOR = {
 const ALL_CATS = Object.keys(CAT_COLOR);
 
 let DATA = null;
-let curPat = null, curWeek = 1;
+let curPat = null, curWeek = 1, curBarTab = 'vol';
 let charts = {};
 
 // ─── JSONP HELPER ───────────────────────────────────────────────────
@@ -218,6 +227,7 @@ async function loadData() {
         week:      w.week      || w.semana,
         vol:       w.vol       || w.volByCat  || {},
         carga:     w.carga     || w.cargaByCat || {},
+        bienestar: w.bienestar || null,
         exercises: (w.exercises || w.exList   || []).filter(e => e.ejercicio),
       }));
     });
@@ -345,7 +355,14 @@ function render() {
         <div class="legend" id="radarLeg"></div>
       </div>
       <div class="card">
-        <div class="card-title">Volumen por categoría</div>
+        <div class="card-top">
+          <div class="card-title">Por categoría</div>
+          <div class="bar-tabs">
+            <button class="btab${curBarTab==='vol'?' active':''}" onclick="switchBarTab('vol')">Volumen</button>
+            <button class="btab${curBarTab==='carga'?' active':''}" onclick="switchBarTab('carga')">Carga</button>
+            <button class="btab${curBarTab==='bien'?' active':''}" onclick="switchBarTab('bien')">Bienestar</button>
+          </div>
+        </div>
         <div class="chart-wrap"><canvas id="barC"></canvas></div>
       </div>
     </div>
@@ -358,8 +375,88 @@ function render() {
     </div>`;
 
   renderRadar(wd);
-  renderBar(wd);
+  renderBarTab(wd);
   if (weeks.length > 1) renderProgress(weeks);
+}
+
+function switchBarTab(tab) {
+  curBarTab = tab;
+  if (!curPat || !DATA[curPat]) return;
+  const wd = DATA[curPat].find(w => w.week === curWeek) || DATA[curPat][0];
+  // Actualizar botones
+  document.querySelectorAll('.btab').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase().startsWith(
+      tab === 'vol' ? 'vol' : tab === 'carga' ? 'car' : 'bi'
+    ));
+  });
+  if (charts.bar) { charts.bar.destroy(); delete charts.bar; }
+  renderBarTab(wd);
+}
+
+function renderBarTab(wd) {
+  if (curBarTab === 'bien') { renderBienestar(wd); return; }
+  const data = curBarTab === 'vol' ? wd.vol : wd.carga;
+  const cats = ALL_CATS.filter(c => (data[c] || 0) > 0);
+  if (!cats.length) return;
+  const colors = cats.map(c => CAT_COLOR[c]);
+  charts.bar = new Chart(document.getElementById('barC'), {
+    type: 'bar',
+    data: {
+      labels: cats,
+      datasets: [{ data: cats.map(c => data[c]||0), backgroundColor: colors.map(c=>c+'33'), borderColor: colors, borderWidth: 1.5, borderRadius: 6 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: {
+        label: ctx => ` ${Math.round(ctx.parsed.y).toLocaleString('es')}${curBarTab==='carga'?' kg':' reps'}`
+      }}},
+      scales: {
+        x: { ticks: { color: '#555', font: { size: 8, family: 'DM Mono' } }, grid: { display: false } },
+        y: { ticks: { color: '#4a4b55', font: { size: 8, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+function renderBienestar(wd) {
+  const b = wd.bienestar;
+  const canvas = document.getElementById('barC');
+  if (!b) {
+    // Sin datos: mostrar mensaje en el canvas
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#4a4b55';
+    ctx.font = '12px DM Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText('Sin datos de bienestar', canvas.width/2, canvas.height/2);
+    return;
+  }
+  const LABELS = { sueño:'Sueño', estres:'Estrés', dolor:'Dolor', animo:'Ánimo', ganas:'Ganas' };
+  const COLORS = { sueño:'#5eb0ff', estres:'#ff5c5c', dolor:'#ff8c42', animo:'#c9f43c', ganas:'#b06cff' };
+  const keys   = Object.keys(LABELS);
+  const dias   = [1, 2, 3, 4];
+
+  charts.bar = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: dias.map(d => `Día ${d}`),
+      datasets: keys.map(k => ({
+        label: LABELS[k],
+        data:  (b[k] || [null,null,null,null]),
+        backgroundColor: COLORS[k] + '44',
+        borderColor: COLORS[k],
+        borderWidth: 1.5, borderRadius: 4,
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, position: 'bottom', labels: { color: '#7a7b85', font: { size: 9, family: 'DM Mono' }, boxWidth: 8, padding: 10 } } },
+      scales: {
+        x: { ticks: { color: '#555', font: { size: 9, family: 'DM Mono' } }, grid: { display: false } },
+        y: { min: 0, max: 5, ticks: { stepSize: 1, color: '#4a4b55', font: { size: 8, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
 }
 
 function renderRadar(wd) {
@@ -398,26 +495,6 @@ function renderRadar(wd) {
   ).join('');
 }
 
-function renderBar(wd) {
-  const cats = ALL_CATS.filter(c => wd.vol[c] > 0);
-  if (!cats.length) return;
-  const colors = cats.map(c => CAT_COLOR[c]);
-  charts.bar = new Chart(document.getElementById('barC'), {
-    type: 'bar',
-    data: {
-      labels: cats,
-      datasets: [{ data: cats.map(c => wd.vol[c]||0), backgroundColor: colors.map(c=>c+'33'), borderColor: colors, borderWidth: 1.5, borderRadius: 6 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: '#555', font: { size: 8, family: 'DM Mono' } }, grid: { display: false } },
-        y: { ticks: { color: '#4a4b55', font: { size: 8, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.04)' } }
-      }
-    }
-  });
-}
 
 function renderProgress(weeks) {
   const activeCats = ALL_CATS.filter(c => weeks.some(w => (w.vol[c]||0) > 0)).slice(0,6);
