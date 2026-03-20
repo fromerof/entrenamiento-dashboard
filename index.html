@@ -227,7 +227,7 @@ async function loadData() {
         week:      w.week      || w.semana,
         vol:       w.vol       || w.volByCat   || {},
         carga:     w.carga     || w.cargaByCat  || {},
-        series:    w.series    || {},
+        series: w.ser || w.series || {},
         bienestar: w.bienestar || null,
         exercises: (w.exercises || w.exList || []).filter(e => e.ejercicio),
       }));
