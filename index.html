@@ -396,7 +396,7 @@ function switchBarTab(tab) {
 function renderBarTab(wd) {
   if (curBarTab === 'bien') { renderBienestar(wd); return; }
   const dataMap = { vol: wd.vol, ser: wd.series || {}, carga: wd.carga };
-  const unitMap = { vol: 'reps', ser: 'series', carga: 'kg' };
+  const unitMap = { vol: 'vol. ef.', ser: 'series', carga: 'kg' };
   const data    = dataMap[curBarTab] || {};
   const cats    = ALL_CATS.filter(c => (data[c] || 0) > 0);
   if (!cats.length) return;
