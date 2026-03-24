@@ -464,39 +464,66 @@ function renderBienestar(wd) {
 function renderRadar(wd) {
   const cats = ALL_CATS.filter(c => wd.vol[c] > 0);
   if (!cats.length) return;
-  charts.radar = new Chart(document.getElementById('radarC'), {
-    type: 'radar',
-    data: {
-      labels: cats,
-      datasets: [{
-        data: cats.map(c => wd.vol[c] || 0),
-        backgroundColor: 'rgba(201,244,60,0.1)',
-        borderColor: '#c9f43c', borderWidth: 2,
-        pointBackgroundColor: cats.map(c => CAT_COLOR[c]),
-        pointRadius: 5, pointHoverRadius: 7,
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        r: {
-          ticks: { display: false },
-          grid: { color: 'rgba(255,255,255,0.06)' },
-          angleLines: { color: 'rgba(255,255,255,0.06)' },
-          pointLabels: { font: { size: 9, family: 'Instrument Sans', weight: '600' }, color: '#7a7b85' }
+
+  // Resetear estado al cambiar de semana/alumno
+  window._radarActive = {};
+  cats.forEach(c => window._radarActive[c] = true);
+
+  function drawRadar() {
+    if (charts.radar) { try { charts.radar.destroy(); } catch(e){} }
+    charts.radar = new Chart(document.getElementById('radarC'), {
+      type: 'radar',
+      data: {
+        labels: cats,
+        datasets: [{
+          data: cats.map(c => window._radarActive[c] ? (wd.vol[c] || 0) : 0),
+          backgroundColor: 'rgba(201,244,60,0.1)',
+          borderColor: '#c9f43c', borderWidth: 2,
+          pointBackgroundColor: cats.map(c => window._radarActive[c] ? CAT_COLOR[c] : 'rgba(0,0,0,0)'),
+          pointRadius: 5, pointHoverRadius: 7,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          r: {
+            ticks: { display: false },
+            grid: { color: 'rgba(255,255,255,0.06)' },
+            angleLines: { color: 'rgba(255,255,255,0.06)' },
+            pointLabels: {
+              font: { size: 9, family: 'Instrument Sans', weight: '600' },
+              color: '#7a7b85'
+            }
+          }
         }
       }
-    }
-  });
+    });
+
+    // Actualizar opacidad de leyenda
+    cats.forEach(c => {
+      const el = document.getElementById('leg_' + c.replace(/[\s.]/g,'_'));
+      if (el) el.style.opacity = window._radarActive[c] ? 1 : 0.25;
+    });
+  }
+
+  // Exponer función para que onclick la llame
+  window._toggleRadarCat = function(cat) {
+    window._radarActive[cat] = !window._radarActive[cat];
+    drawRadar();
+  };
+
+  drawRadar();
+
   document.getElementById('radarLeg').innerHTML = cats.map(c =>
-    `<div class="leg-item">
+    `<div class="leg-item" id="leg_${c.replace(/[\s.]/g,'_')}"
+          style="cursor:pointer;transition:opacity .15s"
+          onclick="_toggleRadarCat('${c}')">
       <span class="leg-dot" style="background:${CAT_COLOR[c]}"></span>
       <span>${c}: <b style="color:${CAT_COLOR[c]}">${Math.round(wd.vol[c])}</b></span>
     </div>`
   ).join('');
 }
-
 
 function renderProgress(weeks) {
   const activeCats = ALL_CATS.filter(c => weeks.some(w => (w.vol[c]||0) > 0)).slice(0,6);
