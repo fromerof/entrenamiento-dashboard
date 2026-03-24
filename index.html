@@ -77,10 +77,95 @@ body{background:var(--bg);color:var(--text);font-family:'Instrument Sans',sans-s
 /* HEADER */
 .top-bar{display:flex;align-items:center;justify-content:space-between;padding:24px 28px 0;gap:12px;flex-wrap:wrap;}
 .pat-name{font-family:'Unbounded',sans-serif;font-size:26px;font-weight:900;line-height:1;letter-spacing:-.01em;}
-.week-tabs{display:flex;gap:5px;flex-wrap:wrap;}
+.week-tabs{display:flex;gap:5px;flex-wrap:wrap;align-items:center;}
 .wtab{padding:5px 13px;font-size:10px;font-weight:600;border-radius:20px;border:1px solid var(--bord2);cursor:pointer;transition:all .12s;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.06em;background:transparent;}
 .wtab:hover{border-color:var(--lime);color:var(--lime);}
 .wtab.active{background:var(--lime);border-color:var(--lime);color:#0b0c0e;font-weight:700;}
+
+/* NUEVA SEMANA BUTTON */
+.btn-nueva-semana{
+  padding:5px 11px;
+  font-size:10px;
+  font-weight:700;
+  border-radius:20px;
+  border:1px dashed rgba(201,244,60,.4);
+  cursor:pointer;
+  color:var(--lime);
+  font-family:'DM Mono',monospace;
+  letter-spacing:.06em;
+  background:transparent;
+  transition:all .15s;
+  opacity:.55;
+  margin-left:2px;
+}
+.btn-nueva-semana:hover{opacity:1;border-color:var(--lime);background:rgba(201,244,60,.07);}
+.btn-nueva-semana:disabled{opacity:.15;cursor:not-allowed;}
+
+/* INLINE LOADING */
+.inline-loading{
+  display:flex;align-items:center;gap:10px;
+  margin:14px 28px 0;
+  padding:12px 16px;
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;
+}
+.inline-loading .spinner{width:14px;height:14px;border-width:1.5px;}
+
+/* COPY BANNER */
+.copy-banner{
+  margin:14px 28px 0;
+  padding:16px 20px;
+  background:var(--bg2);
+  border:1px solid var(--bord2);
+  border-left:3px solid var(--lime);
+  border-radius:var(--r2);
+  display:flex;
+  align-items:center;
+  gap:16px;
+  animation:fadeIn .2s ease;
+}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.copy-banner-icon{font-size:20px;opacity:.7;flex-shrink:0;}
+.copy-banner-text{flex:1;}
+.copy-banner-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px;}
+.copy-banner-sub{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;}
+.copy-banner-btns{display:flex;gap:8px;flex-shrink:0;}
+.btn-copy-si{
+  padding:7px 18px;
+  background:var(--lime);
+  border:none;border-radius:var(--r);
+  color:#0b0c0e;font-size:11px;font-weight:700;
+  cursor:pointer;font-family:'DM Mono',monospace;
+  transition:opacity .12s;letter-spacing:.03em;
+}
+.btn-copy-si:hover{opacity:.85;}
+.btn-copy-si:disabled{opacity:.4;cursor:not-allowed;}
+.btn-copy-no{
+  padding:7px 18px;
+  background:transparent;
+  border:1px solid var(--bord2);border-radius:var(--r);
+  color:var(--muted);font-size:11px;
+  cursor:pointer;font-family:'DM Mono',monospace;
+  transition:all .12s;
+}
+.btn-copy-no:hover{border-color:var(--muted);color:var(--text);}
+.btn-copy-no:disabled{opacity:.4;cursor:not-allowed;}
+
+/* EDIT FORM PLACEHOLDER */
+.form-semana{
+  margin:14px 28px 32px;
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:var(--r2);
+  padding:24px;
+}
+.form-semana-title{
+  font-size:9px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.14em;color:var(--lime);margin-bottom:6px;
+}
+.form-semana-sub{font-size:12px;color:var(--muted);font-family:'DM Mono',monospace;}
 
 /* STAT CARDS */
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:18px 28px 0;}
@@ -94,10 +179,9 @@ body{background:var(--bg);color:var(--text);font-family:'Instrument Sans',sans-s
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 28px 0;}
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r2);padding:18px 20px;}
 .card-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:14px;}
-.card-top .card-title{margin-bottom:0;}
 .chart-wrap{position:relative;width:100%;height:240px;}
 .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
-.leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);transition:opacity .15s;}
 .leg-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
 .progress-wrap{padding:0 28px 0;}
 .prog-wrap{position:relative;width:100%;height:200px;}
@@ -116,18 +200,11 @@ td.mono{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);}
 td.vol{font-family:'DM Mono',monospace;font-size:10px;color:var(--lime);font-weight:500;}
 td.carga-td{font-family:'DM Mono',monospace;font-size:10px;color:var(--orange);font-weight:500;}
 td.dash{color:var(--muted2);font-family:'DM Mono',monospace;font-size:10px;}
+td.tiempo-badge{font-family:'DM Mono',monospace;font-size:10px;color:var(--teal);}
 .tipo-pill{display:inline-block;padding:2px 7px;border-radius:4px;font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
 
 /* ERROR BANNER */
 .err-banner{margin:12px 28px 0;padding:10px 14px;background:rgba(255,92,92,.1);border:1px solid rgba(255,92,92,.25);border-radius:var(--r);font-size:11px;color:#ff8c8c;font-family:'DM Mono',monospace;}
-
-/* BAR TABS */
-.card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-.card-top .card-title{margin-bottom:0;}
-.bar-tabs{display:flex;gap:4px;}
-.btab{padding:4px 10px;font-size:9px;font-weight:600;border-radius:20px;border:1px solid var(--bord2);cursor:pointer;transition:all .12s;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.05em;background:transparent;}
-.btab:hover{border-color:var(--lime);color:var(--lime);}
-.btab.active{background:var(--lime);border-color:var(--lime);color:#0b0c0e;font-weight:700;}
 </style>
 </head>
 <body>
@@ -162,7 +239,6 @@ td.dash{color:var(--muted2);font-family:'DM Mono',monospace;font-size:10px;}
 
 <script>
 // ─── CONFIGURACIÓN ──────────────────────────────────────────────
-// Reemplazar con la URL del Apps Script desplegado como web app
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyQuqVlPXZJ8OmLemxsXqHO8N_uL_nFsxglwgXc5NAKVFwClkMr3LO8RIYTCpDnrTj1vQ/exec';
 // ────────────────────────────────────────────────────────────────
 
@@ -180,33 +256,28 @@ const CAT_COLOR = {
 };
 const ALL_CATS = Object.keys(CAT_COLOR);
 
-let DATA = null;
-let curPat = null, curWeek = 1, curBarTab = 'vol';
-let charts = {};
+let DATA    = null;
+let DATA_IDS = {};   // nombre → alumno_id (viene del servidor)
+let curPat  = null;
+let curWeek = 1;
+let charts  = {};
 
-// ─── JSONP HELPER ───────────────────────────────────────────────────
+// ─── JSONP HELPER ───────────────────────────────────────────────
 function fetchJSONP(url) {
   return new Promise((resolve, reject) => {
     const cbName = '_cb_' + Date.now();
     const script = document.createElement('script');
-    const timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error('Timeout'));
-    }, 15000);
+    const timeout = setTimeout(() => { cleanup(); reject(new Error('Timeout')); }, 15000);
 
     function cleanup() {
       delete window[cbName];
-      document.body.removeChild(script);
+      if (document.body.contains(script)) document.body.removeChild(script);
       clearTimeout(timeout);
     }
 
-    window[cbName] = function(data) {
-      cleanup();
-      resolve(data);
-    };
-
-    script.src = url + '?callback=' + cbName;
-    script.onerror = () => { cleanup(); reject(new Error('HTTP 404')); };
+    window[cbName] = function(data) { cleanup(); resolve(data); };
+    script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + cbName;
+    script.onerror = () => { cleanup(); reject(new Error('HTTP error')); };
     document.body.appendChild(script);
   });
 }
@@ -220,16 +291,25 @@ async function loadData() {
   try {
     const raw = await fetchJSONP(APPS_SCRIPT_URL);
 
-    // Normalizar estructura (exList → exercises)
-    DATA = {};
-    Object.entries(raw).forEach(([pat, weeks]) => {
+    // ── Normalizar estructura ──
+    // El servidor puede retornar:
+    //   Formato nuevo: { nombre: { id: N, semanas: [...] } }
+    //   Formato viejo: { nombre: [...] }   ← backward compatible
+    DATA    = {};
+    DATA_IDS = {};
+
+    Object.entries(raw).forEach(([pat, data]) => {
+      const isNewFormat = !Array.isArray(data) && data.semanas;
+      const weeks       = isNewFormat ? data.semanas : data;
+      DATA_IDS[pat]     = isNewFormat ? (data.id || null) : null;
+
       DATA[pat] = weeks.map(w => ({
         week:      w.week      || w.semana,
-        vol:       w.vol       || w.volByCat   || {},
-        carga:     w.carga     || w.cargaByCat  || {},
-        series: w.ser || w.series || {},
-        bienestar: w.bienestar || null,
-        exercises: (w.exercises || w.exList || []).filter(e => e.ejercicio),
+        sesionId:  w.sesionId  || null,
+        vol:       w.vol       || w.volByCat  || {},
+        carga:     w.carga     || w.cargaByCat || {},
+        series:    w.ser       || w.series    || {},
+        exercises: (w.exercises || w.exList   || []).filter(e => e.ejercicio),
       }));
     });
 
@@ -238,7 +318,6 @@ async function loadData() {
     document.getElementById('srch').disabled = false;
     buildList();
 
-    // Si había un paciente seleccionado, re-renderizar
     if (curPat && DATA[curPat]) render();
     else showWelcome();
 
@@ -256,8 +335,7 @@ async function loadData() {
 }
 
 function setStatus(type, text) {
-  const dot = document.getElementById('statusDot');
-  dot.className = 'status-dot ' + type;
+  document.getElementById('statusDot').className = 'status-dot ' + type;
   document.getElementById('statusText').textContent = text;
 }
 
@@ -272,16 +350,16 @@ function showWelcome() {
 // ─── SIDEBAR ────────────────────────────────────────────────────
 function buildList(filter='') {
   if (!DATA) return;
-  const el = document.getElementById('sbList');
+  const el  = document.getElementById('sbList');
   el.innerHTML = '';
-  const fl = filter.toLowerCase();
+  const fl  = filter.toLowerCase();
   Object.keys(DATA).forEach(name => {
     if (fl && !name.toLowerCase().includes(fl)) return;
     const w = DATA[name].length;
     const d = document.createElement('div');
     d.className = 'pat-row' + (name === curPat ? ' active' : '');
     d.innerHTML = `<span>${name.trim()}</span><span class="pat-badge">${w}S</span>`;
-    d.onclick = () => selectPat(name);
+    d.onclick   = () => selectPat(name);
     el.appendChild(d);
   });
 }
@@ -289,7 +367,7 @@ function buildList(filter='') {
 function filterList(v) { buildList(v); }
 
 function selectPat(name) {
-  curPat = name;
+  curPat  = name;
   curWeek = DATA[name][0].week;
   buildList(document.getElementById('srch').value);
   render();
@@ -305,14 +383,18 @@ function destroyCharts() {
 
 function render() {
   destroyCharts();
-  const weeks = DATA[curPat];
-  const wd = weeks.find(w => w.week === curWeek) || weeks[0];
-  curWeek = wd.week;
+  const weeks   = DATA[curPat];
+  const wd      = weeks.find(w => w.week === curWeek) || weeks[0];
+  curWeek       = wd.week;
 
-  const exs = wd.exercises || [];
+  const exs        = wd.exercises || [];
   const totalVol   = Object.values(wd.vol).reduce((a,b)=>a+b,0);
   const totalCarga = Object.values(wd.carga).reduce((a,b)=>a+b,0);
-  const dias = new Set(exs.map(e=>e.dia)).size;
+  const dias       = new Set(exs.map(e=>e.dia)).size;
+
+  // Calcular siguiente semana para el botón
+  const maxWeek  = Math.max(...weeks.map(w => w.week));
+  const nextWeek = maxWeek + 1;
 
   const tabsHtml = weeks.map(w =>
     `<button class="wtab${w.week===curWeek?' active':''}" onclick="selectWeek(${w.week})">S${w.week}</button>`
@@ -329,8 +411,13 @@ function render() {
   document.getElementById('content').innerHTML = `
     <div class="top-bar">
       <div class="pat-name">${curPat.trim()}</div>
-      <div class="week-tabs">${tabsHtml}</div>
+      <div class="week-tabs">
+        ${tabsHtml}
+        <button class="btn-nueva-semana" id="btnNuevaSemana"
+          onclick="crearSemana(${nextWeek})">+ S${nextWeek}</button>
+      </div>
     </div>
+    <div id="zonaBanner"></div>
     <div class="stats-row">
       <div class="stat" style="--accent:var(--lime)">
         <div class="stat-label">Vol. Efectivo</div>
@@ -356,15 +443,7 @@ function render() {
         <div class="legend" id="radarLeg"></div>
       </div>
       <div class="card">
-        <div class="card-top">
-          <div class="card-title">Resumen por categoría</div>
-          <div class="bar-tabs">
-            <button class="btab${curBarTab==='vol'?' active':''}" onclick="switchBarTab('vol')">Volumen</button>
-            <button class="btab${curBarTab==='ser'?' active':''}" onclick="switchBarTab('ser')">Series</button>
-            <button class="btab${curBarTab==='carga'?' active':''}" onclick="switchBarTab('carga')">Carga</button>
-            <button class="btab${curBarTab==='bien'?' active':''}" onclick="switchBarTab('bien')">Bienestar</button>
-          </div>
-        </div>
+        <div class="card-title">Volumen por categoría</div>
         <div class="chart-wrap"><canvas id="barC"></canvas></div>
       </div>
     </div>
@@ -377,95 +456,153 @@ function render() {
     </div>`;
 
   renderRadar(wd);
-  renderBarTab(wd);
+  renderBar(wd);
   if (weeks.length > 1) renderProgress(weeks);
 }
 
-function switchBarTab(tab) {
-  curBarTab = tab;
-  if (!curPat || !DATA[curPat]) return;
-  const wd = DATA[curPat].find(w => w.week === curWeek) || DATA[curPat][0];
-  document.querySelectorAll('.btab').forEach(b => {
-    const map = { vol:'volumen', ser:'series', carga:'carga', bien:'bienestar' };
-    b.classList.toggle('active', b.textContent.toLowerCase() === map[tab]);
-  });
-  if (charts.bar) { charts.bar.destroy(); delete charts.bar; }
-  renderBarTab(wd);
-}
-
-function renderBarTab(wd) {
-  if (curBarTab === 'bien') { renderBienestar(wd); return; }
-  const dataMap = { vol: wd.vol, ser: wd.series || {}, carga: wd.carga };
-  const unitMap = { vol: 'vol. ef.', ser: 'series', carga: 'kg' };
-  const data    = dataMap[curBarTab] || {};
-  const cats    = ALL_CATS.filter(c => (data[c] || 0) > 0);
-  if (!cats.length) return;
-  const colors = cats.map(c => CAT_COLOR[c]);
-  charts.bar = new Chart(document.getElementById('barC'), {
-    type: 'bar',
-    data: {
-      labels: cats,
-      datasets: [{ data: cats.map(c => data[c]||0), backgroundColor: colors.map(c=>c+'33'), borderColor: colors, borderWidth: 1.5, borderRadius: 6 }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false }, tooltip: { callbacks: {
-        label: ctx => ` ${Math.round(ctx.parsed.y).toLocaleString('es')} ${unitMap[curBarTab]}`
-      }}},
-      scales: {
-        x: { ticks: { color: '#555', font: { size: 8, family: 'DM Mono' } }, grid: { display: false } },
-        y: { ticks: { color: '#4a4b55', font: { size: 8, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.04)' } }
-      }
-    }
-  });
-}
-
-function renderBienestar(wd) {
-  const b = wd.bienestar;
-  const canvas = document.getElementById('barC');
-  if (!b) {
-    // Sin datos: mostrar mensaje en el canvas
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#4a4b55';
-    ctx.font = '12px DM Mono';
-    ctx.textAlign = 'center';
-    ctx.fillText('Sin datos de bienestar', canvas.width/2, canvas.height/2);
+// ─── NUEVA SEMANA ───────────────────────────────────────────────
+async function crearSemana(nextWeek) {
+  const alumnoId = DATA_IDS[curPat];
+  if (!alumnoId) {
+    // Formato viejo — el servidor aún no retorna alumnoId
+    alert('Actualiza el Apps Script para poder crear semanas desde la app.');
     return;
   }
-  const LABELS = { sueño:'Sueño', estres:'Estrés', dolor:'Dolor', animo:'Ánimo', ganas:'Ganas' };
-  const COLORS = { sueño:'#5eb0ff', estres:'#ff5c5c', dolor:'#ff8c42', animo:'#c9f43c', ganas:'#b06cff' };
-  const keys   = Object.keys(LABELS);
-  const dias   = [1, 2, 3, 4];
 
-  charts.bar = new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels: dias.map(d => `Día ${d}`),
-      datasets: keys.map(k => ({
-        label: LABELS[k],
-        data:  (b[k] || [null,null,null,null]),
-        backgroundColor: COLORS[k] + '44',
-        borderColor: COLORS[k],
-        borderWidth: 1.5, borderRadius: 4,
-      }))
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: true, position: 'bottom', labels: { color: '#7a7b85', font: { size: 9, family: 'DM Mono' }, boxWidth: 8, padding: 10 } } },
-      scales: {
-        x: { ticks: { color: '#555', font: { size: 9, family: 'DM Mono' } }, grid: { display: false } },
-        y: { min: 0, max: 5, ticks: { stepSize: 1, color: '#4a4b55', font: { size: 8, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.04)' } }
-      }
+  const btn = document.getElementById('btnNuevaSemana');
+  if (btn) btn.disabled = true;
+
+  setBanner(`
+    <div class="inline-loading">
+      <div class="spinner"></div>
+      <span>Creando Semana ${nextWeek}...</span>
+    </div>`);
+
+  try {
+    const url = `${APPS_SCRIPT_URL}?action=nuevaSesion&alumnoId=${alumnoId}&semana=${nextWeek}`;
+    const res = await fetchJSONP(url);
+
+    if (res.error && !res.sesionId) {
+      setBanner('');
+      if (btn) btn.disabled = false;
+      alert('Error: ' + res.error);
+      return;
     }
-  });
+
+    const newSesionId = res.sesionId || res.ok && res.sesionId;
+
+    // Buscar sesionId de la semana anterior para ofrecer copia
+    const weeks   = DATA[curPat];
+    const prevWd  = weeks.length > 0 ? weeks[weeks.length - 1] : null;
+    const prevSesionId  = prevWd ? prevWd.sesionId : null;
+    const prevWeekNum   = prevWd ? prevWd.week : null;
+
+    showCopyBanner(nextWeek, newSesionId, prevSesionId, prevWeekNum);
+
+  } catch(err) {
+    setBanner('');
+    if (btn) btn.disabled = false;
+    alert('Error creando semana: ' + err.message);
+  }
 }
 
+function showCopyBanner(nextWeek, newSesionId, prevSesionId, prevWeekNum) {
+  const puedecopiar = prevSesionId != null;
+
+  setBanner(`
+    <div class="copy-banner">
+      <div class="copy-banner-icon">📋</div>
+      <div class="copy-banner-text">
+        <div class="copy-banner-title">Semana ${nextWeek} creada</div>
+        <div class="copy-banner-sub">
+          ${puedecopiar
+            ? `¿Copiar estructura de S${prevWeekNum} como base?`
+            : 'Empezar semana vacía'}
+        </div>
+      </div>
+      <div class="copy-banner-btns">
+        ${puedecopiar ? `
+          <button class="btn-copy-si" id="btnCopySi"
+            onclick="confirmarCopiar(${newSesionId}, ${prevSesionId}, ${nextWeek})">
+            Copiar S${prevWeekNum}
+          </button>` : ''}
+        <button class="btn-copy-no"
+          onclick="irAFormulario(${nextWeek}, ${newSesionId})">
+          ${puedecopiar ? 'Semana vacía' : 'Continuar →'}
+        </button>
+      </div>
+    </div>`);
+}
+
+async function confirmarCopiar(newSesionId, prevSesionId, nextWeek) {
+  const btnSi = document.getElementById('btnCopySi');
+  if (btnSi) btnSi.disabled = true;
+
+  setBanner(`
+    <div class="inline-loading">
+      <div class="spinner"></div>
+      <span>Copiando ejercicios...</span>
+    </div>`);
+
+  try {
+    const url = `${APPS_SCRIPT_URL}?action=copiarSemana&sesionOrigen=${prevSesionId}&sesionDestino=${newSesionId}`;
+    const res = await fetchJSONP(url);
+
+    if (res.error) {
+      setBanner('');
+      alert('Error copiando: ' + res.error);
+      return;
+    }
+
+    // Éxito → ir al formulario
+    irAFormulario(nextWeek, newSesionId, res.copiados);
+
+  } catch(err) {
+    setBanner('');
+    alert('Error copiando semana: ' + err.message);
+  }
+}
+
+function irAFormulario(week, sesionId, copiados) {
+  // Por ahora muestra placeholder — aquí irán el formulario de bienestar + tabla editable
+  setBanner('');
+  const zona = document.getElementById('zonaBanner');
+  if (!zona) return;
+
+  // Scroll suave al formulario
+  setTimeout(() => zona.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+
+  // Actualizar datos locales y recargar para mostrar la nueva semana
+  // (en cuanto el servidor tenga los datos, Actualizar los mostrará)
+  const hint = copiados != null
+    ? `${copiados} ejercicios copiados como base. Edita cargas y reps para esta semana.`
+    : 'Semana vacía lista para cargar.';
+
+  setBanner(`
+    <div class="copy-banner" style="border-left-color:var(--blue)">
+      <div class="copy-banner-icon">✓</div>
+      <div class="copy-banner-text">
+        <div class="copy-banner-title">Semana ${week} lista</div>
+        <div class="copy-banner-sub">${hint} — Formulario de ingreso próximamente.</div>
+      </div>
+      <div class="copy-banner-btns">
+        <button class="btn-copy-no" onclick="loadData()">↻ Actualizar</button>
+      </div>
+    </div>`);
+}
+
+// Helper para escribir en la zona de banners
+function setBanner(html) {
+  const zona = document.getElementById('zonaBanner');
+  if (zona) zona.innerHTML = html;
+}
+
+// ─── CHARTS ─────────────────────────────────────────────────────
 function renderRadar(wd) {
   const cats = ALL_CATS.filter(c => wd.vol[c] > 0);
   if (!cats.length) return;
 
-  // Resetear estado al cambiar de semana/alumno
+  // Resetear estado de toggle al cambiar semana/alumno
   window._radarActive = {};
   cats.forEach(c => window._radarActive[c] = true);
 
@@ -479,7 +616,8 @@ function renderRadar(wd) {
           data: cats.map(c => window._radarActive[c] ? (wd.vol[c] || 0) : 0),
           backgroundColor: 'rgba(201,244,60,0.1)',
           borderColor: '#c9f43c', borderWidth: 2,
-          pointBackgroundColor: cats.map(c => window._radarActive[c] ? CAT_COLOR[c] : 'rgba(0,0,0,0)'),
+          pointBackgroundColor: cats.map(c =>
+            window._radarActive[c] ? CAT_COLOR[c] : 'rgba(0,0,0,0)'),
           pointRadius: 5, pointHoverRadius: 7,
         }]
       },
@@ -500,14 +638,13 @@ function renderRadar(wd) {
       }
     });
 
-    // Actualizar opacidad de leyenda
+    // Actualizar opacidad de items de leyenda
     cats.forEach(c => {
       const el = document.getElementById('leg_' + c.replace(/[\s.]/g,'_'));
       if (el) el.style.opacity = window._radarActive[c] ? 1 : 0.25;
     });
   }
 
-  // Exponer función para que onclick la llame
   window._toggleRadarCat = function(cat) {
     window._radarActive[cat] = !window._radarActive[cat];
     drawRadar();
@@ -517,12 +654,33 @@ function renderRadar(wd) {
 
   document.getElementById('radarLeg').innerHTML = cats.map(c =>
     `<div class="leg-item" id="leg_${c.replace(/[\s.]/g,'_')}"
-          style="cursor:pointer;transition:opacity .15s"
+          style="cursor:pointer"
           onclick="_toggleRadarCat('${c}')">
       <span class="leg-dot" style="background:${CAT_COLOR[c]}"></span>
       <span>${c}: <b style="color:${CAT_COLOR[c]}">${Math.round(wd.vol[c])}</b></span>
     </div>`
   ).join('');
+}
+
+function renderBar(wd) {
+  const cats = ALL_CATS.filter(c => wd.vol[c] > 0);
+  if (!cats.length) return;
+  const colors = cats.map(c => CAT_COLOR[c]);
+  charts.bar = new Chart(document.getElementById('barC'), {
+    type: 'bar',
+    data: {
+      labels: cats,
+      datasets: [{ data: cats.map(c => wd.vol[c]||0), backgroundColor: colors.map(c=>c+'33'), borderColor: colors, borderWidth: 1.5, borderRadius: 6 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#555', font: { size: 8, family: 'DM Mono' } }, grid: { display: false } },
+        y: { ticks: { color: '#4a4b55', font: { size: 8, family: 'DM Mono' } }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
 }
 
 function renderProgress(weeks) {
@@ -554,14 +712,18 @@ function buildTable(exs) {
   const days = [...new Set(exs.map(e=>e.dia))].sort((a,b)=>a-b);
   return days.map(dia => {
     const rows = exs.filter(e=>e.dia===dia).map(ex => {
-      const c = CAT_COLOR[ex.tipo]||'#555';
+      const c        = CAT_COLOR[ex.tipo]||'#555';
+      const esTiempo = String(ex.u_medida||'').toUpperCase() === 'TIEMPO';
+      const volCell  = esTiempo
+        ? `<td class="tiempo-badge">— seg</td>`
+        : `<td class="${ex.vol_ef!=null?'vol':'dash'}">${ex.vol_ef!=null?ex.vol_ef:'—'}</td>`;
       return `<tr>
         <td style="font-weight:500;font-size:11px">${ex.ejercicio||'—'}</td>
         <td><span class="tipo-pill" style="background:${c}22;color:${c};border:1px solid ${c}44">${ex.tipo}</span></td>
         <td class="mono">${ex.series||'—'}</td>
         <td class="mono">${ex.repet_raw||'—'}</td>
         <td class="mono">${ex.carga_raw||'—'}</td>
-        <td class="${ex.vol_ef!=null?'vol':'dash'}">${ex.vol_ef!=null?ex.vol_ef:'—'}</td>
+        ${volCell}
         <td class="${ex.carga_total!=null?'carga-td':'dash'}">${ex.carga_total!=null?Math.round(ex.carga_total):'—'}</td>
       </tr>`;
     }).join('');
