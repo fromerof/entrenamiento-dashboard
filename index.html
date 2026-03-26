@@ -341,33 +341,50 @@ function selectPat(name) {
 function selectWeek(w) { curWeek = w; render(); }
 
 // ─── NUEVA SEMANA ─────────────────────────────────────────────────
-async function crearSemana(n) {
+// IMPORTANTE: crearSemana() NO llama al servidor todavía.
+// Solo muestra las opciones en el banner. La sesión se crea recién
+// cuando el usuario elige una opción explícitamente.
+// Esto evita semanas vacías creadas por clicks accidentales.
+function crearSemana(n) {
   const alumnoId = DATA_IDS[curPat];
   if (!alumnoId) { alert('Actualiza Apps Script para habilitar escritura.'); return; }
-  setBanner('<div class="banner info"><div class="spinner" style="width:14px;height:14px;border-width:1.5px"></div><span>Creando semana S'+n+'...</span></div>');
-  try {
-    const r = await fetchJSONP(APPS_SCRIPT_URL+'?action=nuevaSesion&alumnoId='+alumnoId+'&semana='+n);
-    if (r.error && !r.sesionId) { setBanner('<div class="banner err">⚠ '+r.error+'</div>'); return; }
-    showCopyBanner(n, r.sesionId);
-  } catch(e) { setBanner('<div class="banner err">⚠ '+e.message+'</div>'); }
-}
 
-function showCopyBanner(newWeek, newSesionId) {
-  const prevWk  = (DATA[curPat]||[]).find(w => w.week === newWeek-1);
+  const prevWk  = (DATA[curPat]||[]).find(w => w.week === n-1);
   const hayPrev = prevWk && prevWk.sesionId;
-  let html = '<div class="banner ok">✓ Semana S'+newWeek+' creada.&nbsp;&nbsp;';
-  if (hayPrev) html += '<button class="banner-btn lime" onclick="confirmarCopiar('+prevWk.sesionId+','+newSesionId+','+newWeek+')">Copiar S'+(newWeek-1)+'</button>';
-  html += '<button class="banner-btn ghost" onclick="irAFormulario('+newSesionId+','+newWeek+')">Semana vacía</button></div>';
+
+  let html = '<div class="banner info">Nueva semana S'+n+' — ¿cómo empezar?&nbsp;&nbsp;';
+  if (hayPrev) {
+    html += '<button class="banner-btn lime" onclick="crearYCopiar('+alumnoId+','+prevWk.sesionId+','+n+')">Copiar S'+(n-1)+'</button>';
+  }
+  html += '<button class="banner-btn ghost" onclick="crearVacia('+alumnoId+','+n+')">Semana vacía</button>';
+  html += '&nbsp;<button class="banner-btn ghost" onclick="setBanner(\'\')" style="padding:4px 8px">✕</button>';
+  html += '</div>';
   setBanner(html);
 }
 
-async function confirmarCopiar(sesionOrigen, sesionDestino, newWeek) {
-  setBanner('<div class="banner info"><div class="spinner" style="width:14px;height:14px;border-width:1.5px"></div><span>Copiando ejercicios...</span></div>');
+// Opción 1: crear sesión + copiar ejercicios de la semana anterior
+async function crearYCopiar(alumnoId, sesionOrigen, newWeek) {
+  setBanner('<div class="banner info"><div class="spinner" style="width:14px;height:14px;border-width:1.5px"></div><span>Creando S'+newWeek+' y copiando ejercicios...</span></div>');
   try {
-    const r = await fetchJSONP(APPS_SCRIPT_URL+'?action=copiarSemana&sesionOrigen='+sesionOrigen+'&sesionDestino='+sesionDestino);
-    if (r.error) { setBanner('<div class="banner err">⚠ '+r.error+'</div>'); return; }
-    setBanner('<div class="banner ok">✓ '+(r.copiados||0)+' ejercicios copiados desde S'+(newWeek-1)+'</div>');
-    irAFormulario(sesionDestino, newWeek);
+    const r1 = await fetchJSONP(APPS_SCRIPT_URL+'?action=nuevaSesion&alumnoId='+alumnoId+'&semana='+newWeek);
+    if (r1.error && !r1.sesionId) { setBanner('<div class="banner err">⚠ '+r1.error+'</div>'); return; }
+    const newSesionId = r1.sesionId;
+
+    const r2 = await fetchJSONP(APPS_SCRIPT_URL+'?action=copiarSemana&sesionOrigen='+sesionOrigen+'&sesionDestino='+newSesionId);
+    if (r2.error) { setBanner('<div class="banner err">⚠ '+r2.error+'</div>'); return; }
+
+    setBanner('<div class="banner ok">✓ '+(r2.copiados||0)+' ejercicios copiados desde S'+(newWeek-1)+'</div>');
+    irAFormulario(newSesionId, newWeek);
+  } catch(e) { setBanner('<div class="banner err">⚠ '+e.message+'</div>'); }
+}
+
+// Opción 2: crear sesión vacía
+async function crearVacia(alumnoId, newWeek) {
+  setBanner('<div class="banner info"><div class="spinner" style="width:14px;height:14px;border-width:1.5px"></div><span>Creando S'+newWeek+'...</span></div>');
+  try {
+    const r = await fetchJSONP(APPS_SCRIPT_URL+'?action=nuevaSesion&alumnoId='+alumnoId+'&semana='+newWeek);
+    if (r.error && !r.sesionId) { setBanner('<div class="banner err">⚠ '+r.error+'</div>'); return; }
+    irAFormulario(r.sesionId, newWeek);
   } catch(e) { setBanner('<div class="banner err">⚠ '+e.message+'</div>'); }
 }
 
