@@ -143,29 +143,41 @@ td.tiempo-badge{font-family:'DM Mono',monospace;font-size:10px;color:var(--teal)
 .bien-card{
   margin:10px 28px 0;
   background:var(--bg2);border:1px solid var(--border);
-  border-radius:var(--r2);padding:14px 18px;
+  border-radius:var(--r2);overflow:hidden;
 }
+.bien-card-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 18px;cursor:pointer;user-select:none;
+  transition:background .12s;
+}
+.bien-card-header:hover{background:var(--bg3);}
+.bien-card-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);}
+.bien-toggle{font-size:9px;color:var(--muted2);font-family:'DM Mono',monospace;transition:transform .2s;}
+.bien-toggle.open{transform:rotate(180deg);}
+.bien-card-body{padding:10px 18px 14px;border-top:1px solid var(--border);}
 .bien-card-inner{display:flex;align-items:center;gap:0;}
 .bien-meta-col{min-width:130px;margin-right:16px;}
-.bien-card-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:2px;}
 .bien-card-sub{font-size:8px;font-family:'DM Mono',monospace;color:var(--muted2);}
 .bien-grid{display:flex;gap:12px;flex:1;overflow-x:auto;}
 .bien-day-col{display:flex;flex-direction:column;gap:4px;min-width:44px;}
 .bien-day-label{font-size:8px;font-family:'DM Mono',monospace;color:var(--muted2);text-align:center;margin-bottom:2px;font-weight:700;letter-spacing:.08em;}
 .bien-cell{
   display:flex;align-items:center;justify-content:space-between;
-  gap:6px;padding:3px 6px;border-radius:5px;
-  background:var(--bg3);
+  gap:6px;padding:3px 6px;border-radius:5px;background:var(--bg3);
 }
 .bien-cell-icon{font-size:10px;opacity:.7;}
-.bien-cell-val{
-  font-family:'DM Mono',monospace;font-size:10px;font-weight:700;
-  min-width:12px;text-align:right;
+.bien-cell-val{font-family:'DM Mono',monospace;font-size:10px;font-weight:700;min-width:12px;text-align:right;}
+.bien-empty{font-size:10px;color:var(--muted2);font-family:'DM Mono',monospace;padding:2px 0;}
+/* Tabs del card derecho */
+.chart-tabs{display:flex;gap:4px;margin-bottom:12px;}
+.ctab{
+  padding:3px 10px;font-size:9px;font-weight:700;letter-spacing:.06em;
+  font-family:'DM Mono',monospace;border-radius:12px;cursor:pointer;
+  border:1px solid var(--bord2);color:var(--muted);background:transparent;
+  transition:all .12s;
 }
-.bien-empty{
-  font-size:10px;color:var(--muted2);font-family:'DM Mono',monospace;
-  padding:4px 0;
-}
+.ctab:hover{border-color:var(--lime);color:var(--lime);}
+.ctab.active{background:var(--lime);border-color:var(--lime);color:#0b0c0e;}
 /* ── FORMULARIO BIENESTAR ────────────────────────────────────── */
 .form-view{padding:24px 28px 40px;}
 .form-header{display:flex;align-items:center;gap:14px;margin-bottom:24px;}
@@ -574,9 +586,9 @@ window._saltarBienestar = function(sesionId, week) {
 };
 
 
-// ─── TARJETA RESUMEN BIENESTAR ───────────────────────────────────
-// bienestar = { 1: {sueno,estres,dolor,animo,ganas}, 2: {...}, ... }
-// o null si no hay datos registrados para esa semana
+// ─── TARJETA RESUMEN BIENESTAR (colapsable) ─────────────────────
+// bienestar = { 1: {sueno,estres,dolor,animo,ganas}, 2: {...}, ... } | null
+// window._bienOpen controla si está expandida
 function buildBienestarCard(bienestar) {
   const METRICAS_CARD = [
     { key:'sueno',  icon:'😴' },
@@ -585,48 +597,60 @@ function buildBienestarCard(bienestar) {
     { key:'animo',  icon:'⚡' },
     { key:'ganas',  icon:'🔥' },
   ];
+  const RATING_COLORS = ['#ff5c5c','#ff8c42','#ffd166','#c9f43c','#4dffc3'];
 
-  if (!bienestar || !Object.keys(bienestar).length) {
-    return `<div class="bien-card">
-      <div class="bien-card-title">Bienestar</div>
-      <div class="bien-empty">Sin datos registrados para esta semana</div>
-    </div>`;
-  }
+  const hayDatos = bienestar && Object.keys(bienestar).length > 0;
+  const isOpen   = window._bienOpen === true;
+  const toggleId = 'bienToggle';
+  const bodyId   = 'bienBody';
 
-  const diasConDatos = Object.keys(bienestar).map(Number).sort((a,b)=>a-b);
-
-  // Columnas por día
-  const dayCols = diasConDatos.map(dia => {
-    const d = bienestar[dia];
-    const cells = METRICAS_CARD.map(m => {
-      const v = d[m.key];
-      if (v === null || v === undefined) {
-        return `<div class="bien-cell"><span class="bien-cell-icon">${m.icon}</span><span class="bien-cell-val" style="color:var(--muted2)">—</span></div>`;
-      }
-      // Color según valor 1-5
-      const RATING_COLORS = ['#ff5c5c','#ff8c42','#ffd166','#c9f43c','#4dffc3'];
-      const col = RATING_COLORS[v-1];
-      return `<div class="bien-cell" style="background:${col}18;border:1px solid ${col}33">
-        <span class="bien-cell-icon">${m.icon}</span>
-        <span class="bien-cell-val" style="color:${col}">${v}</span>
-      </div>`;
+  let bodyHtml = '';
+  if (!hayDatos) {
+    bodyHtml = `<div class="bien-empty">Sin datos registrados para esta semana</div>`;
+  } else {
+    const diasConDatos = Object.keys(bienestar).map(Number).sort((a,b)=>a-b);
+    const dayCols = diasConDatos.map(dia => {
+      const d = bienestar[dia];
+      const cells = METRICAS_CARD.map(m => {
+        const v = d[m.key];
+        if (v === null || v === undefined || v === '')
+          return `<div class="bien-cell"><span class="bien-cell-icon">${m.icon}</span><span class="bien-cell-val" style="color:var(--muted2)">—</span></div>`;
+        const col = RATING_COLORS[v-1];
+        return `<div class="bien-cell" style="background:${col}18;border:1px solid ${col}33">
+          <span class="bien-cell-icon">${m.icon}</span>
+          <span class="bien-cell-val" style="color:${col}">${v}</span>
+        </div>`;
+      }).join('');
+      return `<div class="bien-day-col"><div class="bien-day-label">D${dia}</div>${cells}</div>`;
     }).join('');
-    return `<div class="bien-day-col">
-      <div class="bien-day-label">D${dia}</div>
-      ${cells}
-    </div>`;
-  }).join('');
-
-  return `<div class="bien-card">
-    <div class="bien-card-inner">
+    bodyHtml = `<div class="bien-card-inner">
       <div class="bien-meta-col">
-        <div class="bien-card-title">Bienestar</div>
         <div class="bien-card-sub">😴 Sueño · 🧠 Estrés<br>💪 Dolor · ⚡ Ánimo · 🔥 Ganas</div>
       </div>
       <div class="bien-grid">${dayCols}</div>
+    </div>`;
+  }
+
+  const statusTxt = hayDatos ? '✓ con datos' : 'sin datos';
+
+  return `<div class="bien-card">
+    <div class="bien-card-header" onclick="_toggleBien()">
+      <span class="bien-card-title">Bienestar <span style="color:var(--muted2);font-weight:400;font-size:8px;letter-spacing:0;text-transform:none;margin-left:6px">${statusTxt}</span></span>
+      <span class="bien-toggle${isOpen?' open':''}" id="${toggleId}">▼</span>
+    </div>
+    <div id="${bodyId}" style="display:${isOpen?'block':'none'}">
+      <div class="bien-card-body">${bodyHtml}</div>
     </div>
   </div>`;
 }
+
+window._toggleBien = function() {
+  window._bienOpen = !window._bienOpen;
+  const body   = document.getElementById('bienBody');
+  const toggle = document.getElementById('bienToggle');
+  if (body)   body.style.display   = window._bienOpen ? 'block' : 'none';
+  if (toggle) toggle.className = 'bien-toggle' + (window._bienOpen ? ' open' : '');
+};
 // ─── RENDER DASHBOARD ─────────────────────────────────────────────
 function destroyCharts() {
   Object.values(charts).forEach(c => { try { c.destroy(); } catch(e){} });
@@ -636,6 +660,8 @@ function destroyCharts() {
 function render() {
   destroyCharts();
   window._radarActive = null;
+  window._curChartTab = window._curChartTab || 'vol';
+  // No resetear _bienOpen ni _curChartTab — mantener preferencia del usuario entre semanas
 
   const weeks = DATA[curPat];
   const wd    = weeks.find(w => w.week === curWeek) || weeks[0];
@@ -695,7 +721,13 @@ function render() {
         <div class="legend" id="radarLeg"></div>
       </div>
       <div class="card">
-        <div class="card-title">Volumen por categoría</div>
+        <div class="card-title">Resumen por categoría</div>
+        <div class="chart-tabs">
+          <button class="ctab active" id="ctab-vol"    onclick="_setChartTab('vol')">Volumen</button>
+          <button class="ctab"        id="ctab-series" onclick="_setChartTab('series')">Series</button>
+          <button class="ctab"        id="ctab-carga"  onclick="_setChartTab('carga')">Carga</button>
+          <button class="ctab"        id="ctab-bien"   onclick="_setChartTab('bien')">Bienestar</button>
+        </div>
         <div class="chart-wrap"><canvas id="barC"></canvas></div>
       </div>
     </div>
@@ -709,6 +741,11 @@ function render() {
 
   renderRadar(wd);
   renderBar(wd);
+  // Sincronizar botón activo del tab con estado actual
+  ['vol','series','carga','bien'].forEach(t => {
+    const btn = document.getElementById('ctab-'+t);
+    if (btn) btn.className = 'ctab' + (t === window._curChartTab ? ' active' : '');
+  });
   if (weeks.length > 1) renderProgress(weeks);
 }
 
@@ -768,19 +805,123 @@ function renderRadar(wd) {
   };
 }
 
+// ─── CHART TABS ──────────────────────────────────────────────────
+// _curChartTab: 'vol' | 'series' | 'carga' | 'bien'
+// Se preserva al cambiar de tab para no resetear al volver
+
+window._setChartTab = function(tab) {
+  window._curChartTab = tab;
+  // Actualizar clases de botones
+  ['vol','series','carga','bien'].forEach(t => {
+    const btn = document.getElementById('ctab-' + t);
+    if (btn) btn.className = 'ctab' + (t === tab ? ' active' : '');
+  });
+  // Destruir chart actual y redibujar
+  if (charts.bar) { try { charts.bar.destroy(); } catch(e){} delete charts.bar; }
+  // Recuperar wd del estado actual
+  const wd = (DATA[curPat]||[]).find(w => w.week === curWeek);
+  if (wd) renderBar(wd);
+};
+
 function renderBar(wd) {
-  const cats = ALL_CATS.filter(c => wd.vol[c] > 0);
-  if (!cats.length) return;
+  const tab  = window._curChartTab || 'vol';
+  const el   = document.getElementById('barC');
+  if (!el) return;
+
+  // ── Tab Bienestar — barras agrupadas por día ──────────────────
+  if (tab === 'bien') {
+    const bien = wd.bienestar;
+    if (!bien || !Object.keys(bien).length) {
+      // Sin datos: mostrar canvas vacío con mensaje
+      if (charts.bar) { try{charts.bar.destroy();}catch(e){} }
+      charts.bar = null;
+      el.style.display = 'none';
+      // Mostrar mensaje si no existe ya
+      let msg = document.getElementById('barNoData');
+      if (!msg) {
+        msg = document.createElement('div');
+        msg.id = 'barNoData';
+        msg.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted2);font-size:11px;font-family:DM Mono,monospace;';
+        msg.textContent = 'Sin bienestar registrado';
+        el.parentNode.appendChild(msg);
+      }
+      return;
+    }
+    // Limpiar mensaje si existe
+    const msg = document.getElementById('barNoData');
+    if (msg) msg.remove();
+    el.style.display = '';
+
+    const METRICAS_KEYS = ['sueno','estres','dolor','animo','ganas'];
+    const METRICAS_LABELS = ['Sueño','Estrés','Dolor','Ánimo','Ganas'];
+    const dias = Object.keys(bien).map(Number).sort((a,b)=>a-b);
+    const DIA_COLORS = ['#5eb0ff','#c9f43c','#b06cff','#ff8c42'];
+
+    const datasets = dias.map((dia, i) => ({
+      label: 'Día ' + dia,
+      data: METRICAS_KEYS.map(k => {
+        const v = bien[dia][k];
+        return (v === null || v === undefined || v === '') ? 0 : v;
+      }),
+      backgroundColor: DIA_COLORS[i % DIA_COLORS.length] + '55',
+      borderColor:     DIA_COLORS[i % DIA_COLORS.length],
+      borderWidth: 1.5, borderRadius: 4,
+    }));
+
+    if (charts.bar) { try{charts.bar.destroy();}catch(e){} }
+    charts.bar = new Chart(el, {
+      type: 'bar',
+      data: { labels: METRICAS_LABELS, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: true, position: 'bottom', labels: { color:'#7a7b85', font:{ size:8, family:'DM Mono' }, boxWidth:8, padding:10 } } },
+        scales: {
+          x: { ticks:{ color:'#555', font:{ size:8, family:'DM Mono' } }, grid:{ display:false } },
+          y: { min:0, max:5, ticks:{ color:'#4a4b55', font:{ size:8, family:'DM Mono' }, stepSize:1 }, grid:{ color:'rgba(255,255,255,0.04)' } }
+        }
+      }
+    });
+    return;
+  }
+
+  // ── Tabs vol / series / carga — barras por categoría ─────────
+  const limpiar = () => { const m = document.getElementById('barNoData'); if (m) m.remove(); el.style.display = ''; };
+  limpiar();
+
+  const dataMap = { vol: wd.vol, series: wd.ser, carga: wd.carga };
+  const data    = dataMap[tab] || {};
+  const cats    = ALL_CATS.filter(c => (data[c]||0) > 0);
+
+  if (!cats.length) {
+    if (charts.bar) { try{charts.bar.destroy();}catch(e){} charts.bar = null; }
+    el.style.display = 'none';
+    let msg = document.getElementById('barNoData');
+    if (!msg) {
+      msg = document.createElement('div');
+      msg.id = 'barNoData';
+      msg.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted2);font-size:11px;font-family:DM Mono,monospace;';
+      msg.textContent = 'Sin datos';
+      el.parentNode.appendChild(msg);
+    }
+    return;
+  }
+
   const colors = cats.map(c => CAT_COLOR[c]);
-  charts.bar = new Chart(document.getElementById('barC'), {
+  const units  = { vol:'reps', series:'series', carga:'kg' };
+
+  if (charts.bar) { try{charts.bar.destroy();}catch(e){} }
+  charts.bar = new Chart(el, {
     type: 'bar',
-    data: { labels: cats, datasets: [{ data: cats.map(c=>wd.vol[c]||0), backgroundColor: colors.map(c=>c+'33'), borderColor: colors, borderWidth: 1.5, borderRadius: 6 }] },
+    data: { labels: cats, datasets: [{ data: cats.map(c=>data[c]||0), backgroundColor: colors.map(c=>c+'33'), borderColor: colors, borderWidth: 1.5, borderRadius: 6 }] },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ctx.raw + ' ' + (units[tab]||'') } }
+      },
       scales: {
-        x: { ticks: { color:'#555', font:{ size:8, family:'DM Mono' } }, grid:{ display:false } },
-        y: { ticks: { color:'#4a4b55', font:{ size:8, family:'DM Mono' } }, grid:{ color:'rgba(255,255,255,0.04)' } }
+        x: { ticks:{ color:'#555', font:{ size:8, family:'DM Mono' } }, grid:{ display:false } },
+        y: { ticks:{ color:'#4a4b55', font:{ size:8, family:'DM Mono' } }, grid:{ color:'rgba(255,255,255,0.04)' } }
       }
     }
   });
