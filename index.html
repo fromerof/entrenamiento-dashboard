@@ -138,6 +138,34 @@ td.tiempo-badge{font-family:'DM Mono',monospace;font-size:10px;color:var(--teal)
 .tipo-pill{display:inline-block;padding:2px 7px;border-radius:4px;font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
 .u-medida-pill{display:inline-block;padding:1px 5px;border-radius:3px;font-size:8px;font-family:'DM Mono',monospace;background:rgba(77,255,195,.08);color:var(--teal);border:1px solid rgba(77,255,195,.15);}
 
+
+/* ── TARJETA BIENESTAR ───────────────────────────────────────── */
+.bien-card{
+  margin:10px 28px 0;
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--r2);padding:14px 18px;
+}
+.bien-card-inner{display:flex;align-items:center;gap:0;}
+.bien-meta-col{min-width:130px;margin-right:16px;}
+.bien-card-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:2px;}
+.bien-card-sub{font-size:8px;font-family:'DM Mono',monospace;color:var(--muted2);}
+.bien-grid{display:flex;gap:12px;flex:1;overflow-x:auto;}
+.bien-day-col{display:flex;flex-direction:column;gap:4px;min-width:44px;}
+.bien-day-label{font-size:8px;font-family:'DM Mono',monospace;color:var(--muted2);text-align:center;margin-bottom:2px;font-weight:700;letter-spacing:.08em;}
+.bien-cell{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:6px;padding:3px 6px;border-radius:5px;
+  background:var(--bg3);
+}
+.bien-cell-icon{font-size:10px;opacity:.7;}
+.bien-cell-val{
+  font-family:'DM Mono',monospace;font-size:10px;font-weight:700;
+  min-width:12px;text-align:right;
+}
+.bien-empty{
+  font-size:10px;color:var(--muted2);font-family:'DM Mono',monospace;
+  padding:4px 0;
+}
 /* ── FORMULARIO BIENESTAR ────────────────────────────────────── */
 .form-view{padding:24px 28px 40px;}
 .form-header{display:flex;align-items:center;gap:14px;margin-bottom:24px;}
@@ -545,6 +573,60 @@ window._saltarBienestar = function(sesionId, week) {
     </div>`;
 };
 
+
+// ─── TARJETA RESUMEN BIENESTAR ───────────────────────────────────
+// bienestar = { 1: {sueno,estres,dolor,animo,ganas}, 2: {...}, ... }
+// o null si no hay datos registrados para esa semana
+function buildBienestarCard(bienestar) {
+  const METRICAS_CARD = [
+    { key:'sueno',  icon:'😴' },
+    { key:'estres', icon:'🧠' },
+    { key:'dolor',  icon:'💪' },
+    { key:'animo',  icon:'⚡' },
+    { key:'ganas',  icon:'🔥' },
+  ];
+
+  if (!bienestar || !Object.keys(bienestar).length) {
+    return `<div class="bien-card">
+      <div class="bien-card-title">Bienestar</div>
+      <div class="bien-empty">Sin datos registrados para esta semana</div>
+    </div>`;
+  }
+
+  const diasConDatos = Object.keys(bienestar).map(Number).sort((a,b)=>a-b);
+
+  // Columnas por día
+  const dayCols = diasConDatos.map(dia => {
+    const d = bienestar[dia];
+    const cells = METRICAS_CARD.map(m => {
+      const v = d[m.key];
+      if (v === null || v === undefined) {
+        return `<div class="bien-cell"><span class="bien-cell-icon">${m.icon}</span><span class="bien-cell-val" style="color:var(--muted2)">—</span></div>`;
+      }
+      // Color según valor 1-5
+      const RATING_COLORS = ['#ff5c5c','#ff8c42','#ffd166','#c9f43c','#4dffc3'];
+      const col = RATING_COLORS[v-1];
+      return `<div class="bien-cell" style="background:${col}18;border:1px solid ${col}33">
+        <span class="bien-cell-icon">${m.icon}</span>
+        <span class="bien-cell-val" style="color:${col}">${v}</span>
+      </div>`;
+    }).join('');
+    return `<div class="bien-day-col">
+      <div class="bien-day-label">D${dia}</div>
+      ${cells}
+    </div>`;
+  }).join('');
+
+  return `<div class="bien-card">
+    <div class="bien-card-inner">
+      <div class="bien-meta-col">
+        <div class="bien-card-title">Bienestar</div>
+        <div class="bien-card-sub">😴 Sueño · 🧠 Estrés<br>💪 Dolor · ⚡ Ánimo · 🔥 Ganas</div>
+      </div>
+      <div class="bien-grid">${dayCols}</div>
+    </div>
+  </div>`;
+}
 // ─── RENDER DASHBOARD ─────────────────────────────────────────────
 function destroyCharts() {
   Object.values(charts).forEach(c => { try { c.destroy(); } catch(e){} });
@@ -605,6 +687,7 @@ function render() {
         <div class="stat-val">${dias}</div>
       </div>
     </div>
+    ${buildBienestarCard(wd.bienestar)}
     <div class="grid-2">
       <div class="card">
         <div class="card-title">Balance — Vol. Efectivo <span style="color:var(--muted2);font-size:8px;font-weight:400">(click para filtrar)</span></div>
