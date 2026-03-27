@@ -438,32 +438,30 @@ function setBanner(html) {
 // Se muestra al crear una semana nueva, antes de los ejercicios.
 // Estado: window._bienState = { d1:{sueno:null,...}, d2:{...}, ... }
 
+// irAFormulario: primero selecciona el día, luego muestra la grilla de ese día
+// Esto evita rellenar días futuros que aún no pasaron.
+// window._bienState persiste entre días para poder registrar día 1, luego día 2, etc.
+
 function irAFormulario(sesionId, week) {
   destroyCharts();
 
-  // Inicializar estado — null = sin seleccionar
-  window._bienState = {};
-  DIAS_BIEN.forEach(d => {
-    window._bienState['d'+d] = {};
-    METRICAS.forEach(m => window._bienState['d'+d][m.key] = null);
-  });
+  // Inicializar estado completo si no existe aún para esta sesión
+  if (!window._bienState || window._bienSesionId !== sesionId) {
+    window._bienState    = {};
+    window._bienSesionId = sesionId;
+    DIAS_BIEN.forEach(d => {
+      window._bienState['d'+d] = {};
+      METRICAS.forEach(m => window._bienState['d'+d][m.key] = null);
+    });
+  }
 
-  const diaHeaders = DIAS_BIEN.map(d => `<th>Día ${d}</th>`).join('');
-  const diaChips   = DIAS_BIEN.map(d => `<div class="dia-chip" id="chip_d${d}">Día ${d}</div>`).join('');
-
-  const filas = METRICAS.map(m => {
-    const celdas = DIAS_BIEN.map(d => {
-      const btns = [1,2,3,4,5].map(v =>
-        `<button class="rating-btn" id="rb_d${d}_${m.key}_${v}"
-          onclick="_setBien(${d},'${m.key}',${v})"
-          title="${v}/5">${v}</button>`
-      ).join('');
-      return `<td><div class="rating-group">${btns}</div></td>`;
-    }).join('');
-    return `<tr>
-      <td><div class="metrica-label"><span class="metrica-icon">${m.icon}</span>${m.label}</div></td>
-      ${celdas}
-    </tr>`;
+  // Chips de días — muestra cuáles ya tienen datos guardados
+  const diaChips = DIAS_BIEN.map(d => {
+    const state   = window._bienState['d'+d];
+    const llenos  = METRICAS.filter(m => state[m.key] !== null).length;
+    const cls     = llenos === 0 ? '' : llenos === METRICAS.length ? ' completo' : ' parcial';
+    return `<button class="dia-chip${cls}" onclick="_seleccionarDia(${sesionId},${week},${d})"
+      style="cursor:pointer;border:none">Día ${d}</button>`;
   }).join('');
 
   document.getElementById('content').innerHTML = `
@@ -477,24 +475,18 @@ function irAFormulario(sesionId, week) {
       </div>
       <div class="card">
         <div class="card-title">
-          Registro de bienestar
+          ¿Para qué día registras bienestar?
           <span style="color:var(--muted2);font-size:8px;font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px">
-            Cómo llegó el alumno a cada sesión — 1 (bajo) → 5 (óptimo)
+            Selecciona el día de hoy
           </span>
         </div>
-        <div class="dias-status" id="diasStatus">${diaChips}</div>
-        <div style="overflow-x:auto">
-          <table class="bien-table">
-            <thead><tr><th></th>${diaHeaders}</tr></thead>
-            <tbody>${filas}</tbody>
-          </table>
+        <div class="dias-status" style="gap:8px;margin-bottom:8px">${diaChips}</div>
+        <div style="font-size:10px;color:var(--muted2);font-family:'DM Mono',monospace;margin-bottom:16px">
+          Verde = completo · Amarillo = parcial · Gris = sin datos
         </div>
-        <div class="form-footer">
-          <button class="banner-btn lime" id="btnGuardarBien" onclick="_guardarBienestar(${sesionId},${week})">
-            Guardar bienestar
-          </button>
+        <div class="form-footer" style="border-top:none;padding-top:0">
           <button class="banner-btn ghost" onclick="_saltarBienestar(${sesionId},${week})">
-            Saltar por ahora
+            Saltar bienestar
           </button>
           <span class="form-msg" id="bienMsg"></span>
         </div>
@@ -502,11 +494,66 @@ function irAFormulario(sesionId, week) {
     </div>`;
 }
 
-// Click en un botón → actualiza estado y repinta la fila
+// Muestra la grilla de una sola métrica para el día seleccionado
+window._seleccionarDia = function(sesionId, week, dia) {
+  const filas = METRICAS.map(m => {
+    const btns = [1,2,3,4,5].map(v => {
+      const actual = window._bienState['d'+dia][m.key];
+      const activo = actual === v;
+      const col    = RATING_COLORS[v-1];
+      const style  = activo
+        ? `background:${col}bb;border-color:${col};color:#0b0c0e;`
+        : '';
+      return `<button class="rating-btn" id="rb_d${dia}_${m.key}_${v}"
+        onclick="_setBien(${dia},'${m.key}',${v})"
+        style="${style}"
+        title="${v}/5">${v}</button>`;
+    }).join('');
+    return `<tr>
+      <td><div class="metrica-label"><span class="metrica-icon">${m.icon}</span>${m.label}</div></td>
+      <td><div class="rating-group">${btns}</div></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="form-view">
+      <div class="form-header">
+        <button class="btn-back" onclick="irAFormulario(${sesionId},${week})">← Días</button>
+        <div>
+          <div class="form-title">${curPat.trim()}</div>
+          <div class="form-sub">Bienestar — Semana ${week} · Día ${dia}</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          Día ${dia} — Bienestar
+          <span style="color:var(--muted2);font-size:8px;font-weight:400;text-transform:none;letter-spacing:0;margin-left:8px">
+            1 (bajo) → 5 (óptimo)
+          </span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="bien-table">
+            <thead><tr><th></th><th style="text-align:center">Valor</th></tr></thead>
+            <tbody>${filas}</tbody>
+          </table>
+        </div>
+        <div class="form-footer">
+          <button class="banner-btn lime" id="btnGuardarBien"
+            onclick="_guardarBienestar(${sesionId},${week},${dia})">
+            Guardar día ${dia}
+          </button>
+          <button class="banner-btn ghost" onclick="irAFormulario(${sesionId},${week})">
+            ← Volver a días
+          </button>
+          <span class="form-msg" id="bienMsg"></span>
+        </div>
+      </div>
+    </div>`;
+};
+
+// Click en un botón → actualiza estado y repinta
 window._setBien = function(dia, metrica, valor) {
   window._bienState['d'+dia][metrica] = valor;
-
-  // Repintar los 5 botones de esa celda
   for (let v = 1; v <= 5; v++) {
     const btn = document.getElementById(`rb_d${dia}_${metrica}_${v}`);
     if (!btn) continue;
@@ -516,37 +563,31 @@ window._setBien = function(dia, metrica, valor) {
     btn.style.borderColor = activo ? col       : 'var(--bord2)';
     btn.style.color       = activo ? '#0b0c0e' : 'var(--muted2)';
   }
-
-  // Actualizar chip del día
-  const state    = window._bienState['d'+dia];
-  const total    = METRICAS.length;
-  const llenos   = METRICAS.filter(m => state[m.key] !== null).length;
-  const chip     = document.getElementById('chip_d'+dia);
-  if (chip) chip.className = 'dia-chip' +
-    (llenos === 0 ? '' : llenos === total ? ' completo' : ' parcial');
 };
 
-// Guarda: serializa todo el estado como URL params en una sola llamada JSONP
-window._guardarBienestar = async function(sesionId, week) {
+// Guarda solo el día seleccionado — no borra los otros días ya guardados
+window._guardarBienestar = async function(sesionId, week, dia) {
   const btn = document.getElementById('btnGuardarBien');
   const msg = document.getElementById('bienMsg');
 
-  // Validar que haya al menos un valor
-  const hayAlgo = DIAS_BIEN.some(d => METRICAS.some(m => window._bienState['d'+d][m.key] !== null));
+  const state   = window._bienState['d'+dia];
+  const hayAlgo = METRICAS.some(m => state[m.key] !== null);
   if (!hayAlgo) {
-    msg.style.color = 'var(--yellow)'; msg.textContent = 'Ingresa al menos un valor.'; return;
+    msg.style.color = 'var(--yellow)';
+    msg.textContent = 'Ingresa al menos un valor.';
+    return;
   }
 
   btn.disabled = true;
-  msg.style.color = 'var(--muted)'; msg.textContent = 'Guardando...';
+  msg.style.color = 'var(--muted)';
+  msg.textContent = 'Guardando...';
 
-  // Aplanar el estado como: ?action=guardarBienestar&sesionId=X&d1_sueno=4&d2_estres=3...
-  let params = '?action=guardarBienestar&sesionId='+sesionId;
-  DIAS_BIEN.forEach(d => {
-    METRICAS.forEach(m => {
-      const v = window._bienState['d'+d][m.key];
-      if (v !== null) params += '&d'+d+'_'+m.key+'='+v;
-    });
+  // Solo envía los params del día seleccionado
+  // El servidor hace upsert por sesionId+dia (borra y reinserta ese día)
+  let params = '?action=guardarBienestar&sesionId='+sesionId+'&diaUnico='+dia;
+  METRICAS.forEach(m => {
+    const v = state[m.key];
+    if (v !== null) params += '&d'+dia+'_'+m.key+'='+v;
   });
 
   try {
@@ -556,9 +597,9 @@ window._guardarBienestar = async function(sesionId, week) {
       btn.disabled = false;
     } else {
       msg.style.color = 'var(--teal)';
-      msg.textContent = '✓ '+(r.insertados||0)+' día(s) guardado(s)';
-      // Espera breve y avanza a ejercicios
-      setTimeout(() => _saltarBienestar(sesionId, week), 1200);
+      msg.textContent = '✓ Día '+dia+' guardado';
+      // Volver a la selección de días después de un momento
+      setTimeout(() => irAFormulario(sesionId, week), 1000);
     }
   } catch(e) {
     msg.style.color = 'var(--red)'; msg.textContent = '⚠ '+e.message;
