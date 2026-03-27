@@ -322,6 +322,7 @@ async function loadData() {
         carga:     w.carga     ?? w.cargaByCat ?? {},
         ser:       w.ser       ?? w.seriesByCat ?? {},
         exercises: (w.exercises ?? w.exList ?? []).filter(e => e.ejercicio),
+        bienestar: w.bienestar ?? null,
       }));
     });
 
