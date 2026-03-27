@@ -404,6 +404,21 @@ function crearSemana(n) {
 }
 
 // Opción 1: crear sesión + copiar ejercicios de la semana anterior
+// Inyecta la semana nueva en DATA local para que render() la encuentre
+// sin necesitar loadData(). Los ejercicios y bienestar empiezan vacíos.
+function _inyectarSemana(sesionId, week) {
+  if (!DATA[curPat]) return;
+  const yaExiste = DATA[curPat].some(w => w.week === week);
+  if (yaExiste) return;
+  DATA[curPat].push({
+    week, sesionId, mesociclo: 1,
+    vol: {}, carga: {}, ser: {},
+    exercises: [], bienestar: null,
+  });
+  // Ordenar por semana
+  DATA[curPat].sort((a, b) => a.week - b.week);
+}
+
 async function crearYCopiar(alumnoId, sesionOrigen, newWeek) {
   setBanner('<div class="banner info"><div class="spinner" style="width:14px;height:14px;border-width:1.5px"></div><span>Creando S'+newWeek+' y copiando ejercicios...</span></div>');
   try {
@@ -414,6 +429,8 @@ async function crearYCopiar(alumnoId, sesionOrigen, newWeek) {
     const r2 = await fetchJSONP(APPS_SCRIPT_URL+'?action=copiarSemana&sesionOrigen='+sesionOrigen+'&sesionDestino='+newSesionId);
     if (r2.error) { setBanner('<div class="banner err">⚠ '+r2.error+'</div>'); return; }
 
+    _inyectarSemana(newSesionId, newWeek);
+    curWeek = newWeek;
     setBanner('<div class="banner ok">✓ '+(r2.copiados||0)+' ejercicios copiados desde S'+(newWeek-1)+'</div>');
     irAFormulario(newSesionId, newWeek);
   } catch(e) { setBanner('<div class="banner err">⚠ '+e.message+'</div>'); }
@@ -425,6 +442,8 @@ async function crearVacia(alumnoId, newWeek) {
   try {
     const r = await fetchJSONP(APPS_SCRIPT_URL+'?action=nuevaSesion&alumnoId='+alumnoId+'&semana='+newWeek);
     if (r.error && !r.sesionId) { setBanner('<div class="banner err">⚠ '+r.error+'</div>'); return; }
+    _inyectarSemana(r.sesionId, newWeek);
+    curWeek = newWeek;
     irAFormulario(r.sesionId, newWeek);
   } catch(e) { setBanner('<div class="banner err">⚠ '+e.message+'</div>'); }
 }
@@ -596,9 +615,15 @@ window._guardarBienestar = async function(sesionId, week, dia) {
       msg.style.color = 'var(--red)'; msg.textContent = '⚠ '+r.error;
       btn.disabled = false;
     } else {
+      // Actualizar DATA local para que render() refleje el bienestar sin recargar
+      const semana = DATA[curPat] && DATA[curPat].find(w => w.sesionId === sesionId);
+      if (semana) {
+        if (!semana.bienestar) semana.bienestar = {};
+        semana.bienestar[dia] = {};
+        METRICAS.forEach(m => { semana.bienestar[dia][m.key] = state[m.key]; });
+      }
       msg.style.color = 'var(--teal)';
       msg.textContent = '✓ Día '+dia+' guardado';
-      // Volver a la selección de días después de un momento
       setTimeout(() => irAFormulario(sesionId, week), 1000);
     }
   } catch(e) {
