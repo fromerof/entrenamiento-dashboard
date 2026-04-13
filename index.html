@@ -2029,9 +2029,10 @@ window._crearNuevoAlumno = async function() {
 
     // Inject new patient into local DATA so render() finds it
     if (!DATA[r.nombre]) {
-      DATA[r.nombre] = { id: r.alumnoId, semanas: [] };
-      DATA_IDS[r.nombre] = r.alumnoId;
-      _inyectarSemana(r.sesionId, 1);
+    DATA[r.nombre] = { id: r.alumnoId, semanas: [] };
+    DATA_IDS[r.nombre] = r.alumnoId;
+    curPat = r.nombre;
+    _inyectarSemana(r.sesionId, 1);
     }
 
     // Replace buttons with single CTA
