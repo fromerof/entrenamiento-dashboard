@@ -1290,14 +1290,16 @@ window._eliminarFilaEj = async function(idx) {
 window._ejAcFilter = function(input, rowIdx) {
   const list = document.getElementById('ejac-' + rowIdx);
   if (!list) return;
-  const q = input.value.trim().toLowerCase();
+  const q = (input.value || '').trim().toLowerCase();
   const matches = q.length === 0
     ? _ejsCache.slice(0, 12)
     : _ejsCache.filter(e => e.nombre.toLowerCase().includes(q)).slice(0, 10);
+  
   if (!matches.length) { list.style.display = 'none'; return; }
+  
   list.innerHTML = matches.map(e =>
     `<div class="ej-ac-item"
-      onclick="_ejAcSelect(${rowIdx},'${e.nombre.replace(/'/g,"\\'")}','${e.tipo}','${e.uMedida||'REPETICION'}')">
+      onmousedown="_ejAcSelect(${rowIdx},'${e.nombre.replace(/'/g,"\\'")}','${e.tipo}','${e.uMedida||'REPETICION'}')">
       <span>${e.nombre}</span>
       <span style="font-size:9px;color:var(--muted2)">${e.uMedida||'REP'}</span>
     </div>`
