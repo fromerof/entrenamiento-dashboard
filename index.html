@@ -547,14 +547,18 @@ const hayDatosGuardados = DIAS_BIEN.some(d => {
         <div class="form-footer" style="border-top:none;padding-top:0">
           ${hayDatosGuardados ? 
             `<button class="banner-btn lime" onclick="irATablaEjercicios(${sesionId},${week})">
-              Ir a ejercicios →
-            </button>` : ''
+              Continuar a ejercicios →
+            </button>
+            <button class="banner-btn ghost" onclick="irATablaEjercicios(${sesionId},${week})">
+              Saltar bienestar
+            </button>` 
+            : 
+            `<button class="banner-btn ghost" onclick="irATablaEjercicios(${sesionId},${week})">
+              Saltar bienestar
+            </button>`
           }
-          <button class="banner-btn ghost" onclick="irATablaEjercicios(${sesionId},${week})">
-            ${hayDatosGuardados ? 'Solo ejercicios' : 'Saltar bienestar'}
-          </button>
           <span class="form-msg" id="bienMsg"></span>
-         </div>
+        </div>
       </div>
     </div>`;
 }
