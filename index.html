@@ -1333,10 +1333,16 @@ window._ejAcFilter = function(input, rowIdx) {
 };
 
 window._ejAcSelect = function(rowIdx, nombre, tipo, uMedida) {
+  if (!_tablaState[_tablaCurDia][rowIdx]) return;
   _tablaState[_tablaCurDia][rowIdx].ejercicio = nombre;
   _tablaState[_tablaCurDia][rowIdx].tipo      = tipo;
   _tablaState[_tablaCurDia][rowIdx].u_medida  = uMedida;
   _markUnsaved();
+
+  // Remove floating dropdown immediately
+  const fl = document.getElementById('ej-ac-floating');
+  if (fl) fl.remove();
+
   _renderDiaTabla();
 };
 
