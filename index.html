@@ -1100,7 +1100,7 @@ let _tablaSesionId = null;
 let _tablaWeek     = null;
 let _tablaUnsaved  = false;
 
-function irATablaEjercicios(sesionId, week) {
+async function irATablaEjercicios(sesionId, week) {
   destroyCharts();
   _tablaSesionId = sesionId;
   _tablaWeek     = week;
@@ -1121,9 +1121,10 @@ function irATablaEjercicios(sesionId, week) {
 
   // Load ejercicios cache if empty
   if (!_ejsCache.length) {
-    fetchJSONP(APPS_SCRIPT_URL + '?action=getEjercicios')
-      .then(data => { _ejsCache = Array.isArray(data) ? data : []; })
-      .catch(() => {});
+    try {
+      const data = await fetchJSONP(APPS_SCRIPT_URL + '?action=getEjercicios');
+      _ejsCache = Array.isArray(data) ? data : [];
+    } catch(e) { _ejsCache = []; }
   }
 
   _renderTablaView();
