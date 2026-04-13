@@ -1317,7 +1317,7 @@ window._ejAcFilter = function(input, rowIdx) {
     `<div class="ej-ac-item"
       onmousedown="event.preventDefault();_ejAcSelect(${rowIdx},'${e.nombre.replace(/'/g,"\\'")}','${e.tipo}','${e.uMedida||'REPETICION'}')">
       <span>${e.nombre}</span>
-      <span style="font-size:9px;color:var(--muted2)">${e.uMedida||'REP'}</span>
+      <span style="font-size:9px;color:var(--muted2)">${e.tipo||''} · ${e.uMedida||'REP'}</span>
     </div>`
   ).join('');
 
