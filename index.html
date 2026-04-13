@@ -1072,6 +1072,7 @@ window._evalCurUnidad = 'REPETICION';
 async function irAEvaluacion(alumnoId) {
   destroyCharts();
   _evalEjs = [];
+  _ejsCache = []; // fuerza recarga fresca
   if (!_ejsCache.length) {
     try {
       const data = await fetchJSONP(APPS_SCRIPT_URL + '?action=getEjercicios');
@@ -1241,15 +1242,14 @@ window._selEjercicioEval = function(nombre, uMedida) {
 window._agregarEjercicioEval = function() {
   const nombre = (document.getElementById('evalExInput')?.value || '').trim();
   const valor  = parseFloat(document.getElementById('evalValor')?.value);
-  const std    = parseFloat(document.getElementById('evalStd')?.value);
-  const elite  = parseFloat(document.getElementById('evalElite')?.value);
-  const pro    = parseFloat(document.getElementById('evalPro')?.value);
+  const std    = parseFloat(document.getElementById('evalStd')?.value)   || 10;
+  const elite  = parseFloat(document.getElementById('evalElite')?.value) || 15;
+  const pro    = parseFloat(document.getElementById('evalPro')?.value)   || 20;
   const mayorMejor = document.getElementById('evalMayorMejor')?.checked !== false;
   const unidad = window._evalCurUnidad || 'REPETICION';
 
   if (!nombre)                        { _evalMsg('Selecciona un ejercicio'); return; }
   if (isNaN(valor) || valor < 0)      { _evalMsg('Ingresa un valor válido'); return; }
-  if (isNaN(std)||isNaN(elite)||isNaN(pro)) { _evalMsg('Completa los 3 rangos'); return; }
   if (std >= elite || elite >= pro)   { _evalMsg('Los rangos deben ir: Standard < Elite < Pro'); return; }
 
   _evalEjs.push({ ejercicio:nombre, unidad, valor, rangoStandard:std, rangoElite:elite, rangoPro:pro, mayorEsMejor:mayorMejor });
