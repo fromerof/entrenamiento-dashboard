@@ -2022,21 +2022,45 @@ window._crearNuevoAlumno = async function() {
   try {
     const r = await fetchJSONP(APPS_SCRIPT_URL + '?action=crearPaciente&nombre=' + encodeURIComponent(nombre));
     if (r.error) { msg.style.color='var(--red)'; msg.textContent='⚠ ' + r.error; return; }
+
+    // Show success + go to evaluation button
     msg.style.color = 'var(--teal)';
-    msg.textContent = '✓ Alumno creado correctamente';
-    setTimeout(() => {
-      _cerrarModalAlumno();
-      loadData(); // reload to show new patient in sidebar
-    }, 1500);
+    msg.textContent = '✓ ' + r.nombre + ' creado correctamente';
+
+    // Inject new patient into local DATA so render() finds it
+    if (!DATA[r.nombre]) {
+      DATA[r.nombre] = { id: r.alumnoId, semanas: [] };
+      DATA_IDS[r.nombre] = r.alumnoId;
+      _inyectarSemana(r.sesionId, 1);
+    }
+
+    // Replace buttons with single CTA
+    const btns = document.querySelector('#modal-nuevo-alumno .banner-btn.lime');
+    if (btns) btns.parentNode.innerHTML = `
+      <button class="banner-btn lime" onclick="_irAEvalNuevoAlumno('${r.nombre}',${r.alumnoId})"
+        style="width:100%;padding:10px;text-align:center;font-size:11px">
+        ⬡ Comenzar con evaluación →
+      </button>`;
+
   } catch(e) {
-  if (e.message === 'Timeout') {
-    msg.style.color = 'var(--yellow)'; 
-    msg.textContent = '⚠ Tardó mucho pero puede haberse creado. Presiona Actualizar.';
-    setTimeout(() => { _cerrarModalAlumno(); loadData(); }, 2500);
-  } else {
-    msg.style.color = 'var(--red)'; msg.textContent = '⚠ ' + e.message;
+    if (e.message === 'Timeout') {
+      msg.style.color = 'var(--yellow)';
+      msg.textContent = '⚠ Tardó mucho pero puede haberse creado. Presiona Actualizar.';
+      setTimeout(() => { _cerrarModalAlumno(); loadData(); }, 2500);
+    } else {
+      msg.style.color = 'var(--red)'; msg.textContent = '⚠ ' + e.message;
+    }
   }
- }  
+};
+
+window._irAEvalNuevoAlumno = function(nombre, alumnoId) {
+  _cerrarModalAlumno();
+  curPat = nombre;
+  // Refresh sidebar selection
+  document.querySelectorAll('.sb-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.pat === nombre);
+  });
+  irAEvaluacion(alumnoId);
 };
   
 loadData();
