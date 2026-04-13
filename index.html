@@ -1144,8 +1144,16 @@ function _renderEvalView(alumnoId) {
             </div>
             <div style="flex:1">
               <div style="font-size:9px;color:var(--muted2);font-family:'DM Mono',monospace;margin-bottom:4px">VALOR</div>
-              <input type="number" id="evalValor" min="0" step="0.1" placeholder="0"
-                style="width:100%;background:var(--bg3);border:1px solid var(--bord2);border-radius:var(--r);padding:7px 10px;font-size:11px;color:var(--text);font-family:'DM Mono',monospace;outline:none"/>
+              <div style="display:flex;gap:6px;align-items:center">
+                <input type="number" id="evalValor" min="0" step="0.1" placeholder="0"
+                  style="flex:1;background:var(--bg3);border:1px solid var(--bord2);border-radius:var(--r);padding:7px 10px;font-size:11px;color:var(--text);font-family:'DM Mono',monospace;outline:none"/>
+                <div id="evalTimeUnit" style="display:none;gap:4px">
+                  <button id="btnSeg" onclick="_setTimeUnit('seg')"
+                    style="padding:5px 8px;font-size:9px;font-family:'DM Mono',monospace;border-radius:var(--r);border:1px solid var(--lime);background:var(--lime);color:#0b0c0e;cursor:pointer;font-weight:700">seg</button>
+                  <button id="btnMin" onclick="_setTimeUnit('min')"
+                    style="padding:5px 8px;font-size:9px;font-family:'DM Mono',monospace;border-radius:var(--r);border:1px solid var(--bord2);background:transparent;color:var(--muted);cursor:pointer">min</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1231,17 +1239,50 @@ window._selEjercicioEval = function(nombre, uMedida) {
   const input   = document.getElementById('evalExInput');
   const display = document.getElementById('evalUnidadDisplay');
   const list    = document.getElementById('evalAutoList');
-  if (input)   input.value    = nombre;
+  if (input)   input.value       = nombre;
   if (display) display.textContent = uMedida || 'REPETICION';
-  if (list)    list.style.display  = 'none';
+  if (list)    list.style.display = 'none';
   window._evalCurUnidad = uMedida || 'REPETICION';
+
+  // Update range defaults based on unit
+  const isTiempo = uMedida === 'TIEMPO';
+  const std   = document.getElementById('evalStd');
+  const elite = document.getElementById('evalElite');
+  const pro   = document.getElementById('evalPro');
+  if (std && elite && pro) {
+    std.value   = isTiempo ? 60  : 10;
+    elite.value = isTiempo ? 90  : 15;
+    pro.value   = isTiempo ? 120 : 20;
+  }
+
+  // Show/hide seg/min selector
+  const timeUnit = document.getElementById('evalTimeUnit');
+  if (timeUnit) timeUnit.style.display = isTiempo ? 'flex' : 'none';
+
   document.getElementById('evalValor')?.focus();
 };
 
+window._setTimeUnit = function(unit) {
+  window._evalTimeUnit = unit;
+  const btnSeg = document.getElementById('btnSeg');
+  const btnMin = document.getElementById('btnMin');
+  if (!btnSeg || !btnMin) return;
+  if (unit === 'seg') {
+    btnSeg.style.background = 'var(--lime)'; btnSeg.style.color = '#0b0c0e'; btnSeg.style.borderColor = 'var(--lime)';
+    btnMin.style.background = 'transparent'; btnMin.style.color = 'var(--muted)'; btnMin.style.borderColor = 'var(--bord2)';
+  } else {
+    btnMin.style.background = 'var(--lime)'; btnMin.style.color = '#0b0c0e'; btnMin.style.borderColor = 'var(--lime)';
+    btnSeg.style.background = 'transparent'; btnSeg.style.color = 'var(--muted)'; btnSeg.style.borderColor = 'var(--bord2)';
+  }
+};
+window._evalTimeUnit = 'seg'; // default
+  
 // ── Agregar / eliminar ────────────────────────────────────────────
 window._agregarEjercicioEval = function() {
   const nombre = (document.getElementById('evalExInput')?.value || '').trim();
-  const valor  = parseFloat(document.getElementById('evalValor')?.value);
+  let valor = parseFloat(document.getElementById('evalValor')?.value);
+  // Convert minutes to seconds for consistency in DB
+  if (window._evalCurUnidad === 'TIEMPO' && window._evalTimeUnit === 'min') valor = valor * 60;
   const std    = parseFloat(document.getElementById('evalStd')?.value)   || 10;
   const elite  = parseFloat(document.getElementById('evalElite')?.value) || 15;
   const pro    = parseFloat(document.getElementById('evalPro')?.value)   || 20;
