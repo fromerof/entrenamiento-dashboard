@@ -519,6 +519,11 @@ function irAFormulario(sesionId, week) {
       style="cursor:pointer;border:none">Día ${d}</button>`;
   }).join('');
 
+const hayDatosGuardados = DIAS_BIEN.some(d => {
+  const state = window._bienState['d'+d];
+  return METRICAS.some(m => state[m.key] !== null);
+});
+  
   document.getElementById('content').innerHTML = `
     <div class="form-view">
       <div class="form-header">
@@ -540,11 +545,16 @@ function irAFormulario(sesionId, week) {
           Verde = completo · Amarillo = parcial · Gris = sin datos
         </div>
         <div class="form-footer" style="border-top:none;padding-top:0">
-          <button class="banner-btn ghost" onclick="_saltarBienestar(${sesionId},${week})">
-            Saltar bienestar
+          ${hayDatosGuardados ? 
+            `<button class="banner-btn lime" onclick="irATablaEjercicios(${sesionId},${week})">
+              Ir a ejercicios →
+            </button>` : ''
+          }
+          <button class="banner-btn ghost" onclick="irATablaEjercicios(${sesionId},${week})">
+            ${hayDatosGuardados ? 'Solo ejercicios' : 'Saltar bienestar'}
           </button>
           <span class="form-msg" id="bienMsg"></span>
-        </div>
+         </div>
       </div>
     </div>`;
 }
