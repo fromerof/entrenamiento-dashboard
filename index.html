@@ -670,22 +670,7 @@ window._guardarBienestar = async function(sesionId, week, dia) {
 
 // Placeholder hasta implementar tabla de ejercicios
 window._saltarBienestar = function(sesionId, week) {
-  document.getElementById('content').innerHTML = `
-    <div class="form-view">
-      <div class="form-header">
-        <button class="btn-back" onclick="render()">← Volver</button>
-        <div>
-          <div class="form-title">${curPat.trim()}</div>
-          <div class="form-sub">Ejercicios — Semana ${week}</div>
-        </div>
-      </div>
-      <div class="card" style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:48px 20px;color:var(--muted);text-align:center">
-        <div style="font-size:32px;opacity:.2">🏋️</div>
-        <div style="font-size:13px">Tabla de ejercicios — próximamente</div>
-        <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--muted2)">sesión #${sesionId}</div>
-        <button class="banner-btn ghost" onclick="loadData()" style="margin-top:8px">↻ Actualizar datos</button>
-      </div>
-    </div>`;
+  irATablaEjercicios(sesionId, week);
 };
 
 
