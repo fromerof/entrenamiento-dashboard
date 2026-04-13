@@ -214,6 +214,21 @@ td.tiempo-badge{font-family:'DM Mono',monospace;font-size:10px;color:var(--teal)
 
 .form-footer{display:flex;align-items:center;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);}
 .form-msg{font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);}
+
+/* ── MÓDULO EVALUACIONES ─────────────────────────────────────────── */
+.eval-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:0 28px; margin-top:14px; }
+.eval-radar-wrap { position:relative; width:100%; height:300px; }
+.btn-eval { padding:5px 13px; font-size:10px; font-weight:700; border-radius:20px; border:1px solid var(--purple); cursor:pointer; transition:all .12s; color:var(--purple); font-family:'DM Mono',monospace; letter-spacing:.06em; background:transparent; margin-left:8px; }
+.btn-eval:hover { background:var(--purple); color:#0b0c0e; }
+.autocomplete-wrap { position:relative; }
+.autocomplete-list { position:absolute; top:100%; left:0; right:0; background:var(--bg3); border:1px solid var(--bord2); border-radius:var(--r); z-index:100; max-height:180px; overflow-y:auto; }
+.autocomplete-item { padding:7px 10px; font-size:10px; font-family:'DM Mono',monospace; color:var(--muted); cursor:pointer; border-bottom:1px solid var(--border); transition:background .1s; }
+.autocomplete-item:hover { background:var(--bg4); color:var(--text); }
+.autocomplete-item:last-child { border-bottom:none; }
+.eval-ex-row { display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:var(--r); background:var(--bg3); border:1px solid var(--border); margin-bottom:5px; }
+.eval-ex-name { font-size:10px; font-weight:500; flex:1; }
+.eval-ex-del { background:transparent; border:none; color:var(--muted2); cursor:pointer; font-size:16px; line-height:1; padding:0 2px; transition:color .1s; }
+.eval-ex-del:hover { color:var(--red); }
 </style>
 </head>
 <body>
@@ -760,6 +775,7 @@ function render() {
     <div class="top-bar">
       <div class="pat-name">${curPat.trim()}</div>
       <div class="week-tabs">${tabsHtml}</div>
+              <button class="btn-eval" onclick="irAEvaluacion(${alumnoId})">⬡ Evaluación</button>
     </div>
     <div id="zonaBanner"></div>
     <div class="stats-row">
@@ -1047,6 +1063,371 @@ function buildTable(exs) {
     </div>`;
   }).join('');
 }
+// ─── MÓDULO EVALUACIONES ─────────────────────────────────────────
+
+let _evalEjs  = [];   // ejercicios de la evaluación en progreso
+let _ejsCache = [];   // cache de getEjercicios()
+window._evalCurUnidad = 'REPETICION';
+
+async function irAEvaluacion(alumnoId) {
+  destroyCharts();
+  _evalEjs = [];
+  if (!_ejsCache.length) {
+    try {
+      const data = await fetchJSONP(APPS_SCRIPT_URL + '?action=getEjercicios');
+      _ejsCache = Array.isArray(data) ? data : [];
+    } catch(e) { _ejsCache = []; }
+  }
+  _renderEvalView(alumnoId);
+}
+
+function _renderEvalView(alumnoId) {
+  const fecha = new Date().toLocaleDateString('es-CL');
+  const exListHtml = _evalEjs.length === 0
+    ? `<div style="font-size:10px;color:var(--muted2);font-family:'DM Mono',monospace;padding:8px 0">Sin ejercicios agregados aún</div>`
+    : _evalEjs.map((ex, i) => {
+        const score = _normalizarValor(ex.valor, ex.rangoStandard, ex.rangoElite, ex.rangoPro, ex.mayorEsMejor);
+        const nivel = score === null ? '—' : score >= 100 ? 'PRO' : score >= 66 ? 'ELITE' : score >= 33 ? 'STD' : 'BAJO';
+        const col   = score === null ? 'var(--muted2)' : score >= 100 ? 'var(--orange)' : score >= 66 ? 'var(--blue)' : score >= 33 ? 'var(--lime)' : 'var(--red)';
+        return `<div class="eval-ex-row">
+          <span class="eval-ex-name">${ex.ejercicio}</span>
+          <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--lime)">${ex.valor}<span style="color:var(--muted2);font-size:8px;margin-left:2px">${ex.unidad==='TIEMPO'?'seg':'reps'}</span></span>
+          <span style="font-size:8px;font-family:'DM Mono',monospace;color:${col};font-weight:700;min-width:30px;text-align:right">${nivel}</span>
+          <button class="eval-ex-del" onclick="_eliminarEjercicioEval(${i})">×</button>
+        </div>`;
+      }).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="form-view">
+      <div class="form-header">
+        <button class="btn-back" onclick="render()">← Volver</button>
+        <div>
+          <div class="form-title">${curPat.trim()}</div>
+          <div class="form-sub">Nueva evaluación · ${fecha}</div>
+        </div>
+        <button class="banner-btn ghost" style="margin-left:auto" onclick="_verHistorialEval(${alumnoId})">Ver historial →</button>
+      </div>
+
+      <div class="eval-grid">
+        <div class="card">
+          <div class="card-title">Pentagrama de rendimiento</div>
+          <div style="font-size:9px;color:var(--yellow);font-family:'DM Mono',monospace;margin-bottom:10px">
+            ⚠ Recomendado: entre 3 y 8 ejercicios
+          </div>
+          <div class="eval-radar-wrap"><canvas id="evalRadarC"></canvas></div>
+          <div style="display:flex;gap:14px;margin-top:10px;font-size:9px;font-family:'DM Mono',monospace;color:var(--muted)">
+            <span><span style="color:var(--lime)">●</span> Standard</span>
+            <span><span style="color:var(--blue)">●</span> Elite</span>
+            <span><span style="color:var(--orange)">●</span> Pro</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Agregar ejercicio</div>
+
+          <div style="margin-bottom:10px">
+            <div style="font-size:9px;color:var(--muted2);font-family:'DM Mono',monospace;margin-bottom:4px">EJERCICIO</div>
+            <div class="autocomplete-wrap">
+              <input type="text" id="evalExInput" placeholder="Escribir para buscar..." autocomplete="off"
+                oninput="_filtrarEjercicios(this.value)" onfocus="_filtrarEjercicios(this.value)"
+                onkeydown="if(event.key==='Escape')document.getElementById('evalAutoList').style.display='none'"
+                style="width:100%;background:var(--bg3);border:1px solid var(--bord2);border-radius:var(--r);padding:8px 10px;font-size:11px;color:var(--text);font-family:'DM Mono',monospace;outline:none;transition:border-color .15s"/>
+              <div id="evalAutoList" class="autocomplete-list" style="display:none"></div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <div style="flex:1">
+              <div style="font-size:9px;color:var(--muted2);font-family:'DM Mono',monospace;margin-bottom:4px">UNIDAD</div>
+              <div id="evalUnidadDisplay" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--teal);padding:7px 10px;background:var(--bg3);border-radius:var(--r);border:1px solid var(--border)">—</div>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:9px;color:var(--muted2);font-family:'DM Mono',monospace;margin-bottom:4px">VALOR</div>
+              <input type="number" id="evalValor" min="0" step="0.1" placeholder="0"
+                style="width:100%;background:var(--bg3);border:1px solid var(--bord2);border-radius:var(--r);padding:7px 10px;font-size:11px;color:var(--text);font-family:'DM Mono',monospace;outline:none"/>
+            </div>
+          </div>
+
+          <div style="font-size:9px;color:var(--muted2);font-family:'DM Mono',monospace;margin-bottom:6px;letter-spacing:.08em">RANGOS DE REFERENCIA</div>
+          <div style="display:flex;gap:6px;margin-bottom:12px">
+            <div style="flex:1">
+              <div style="font-size:8px;color:var(--lime);font-family:'DM Mono',monospace;margin-bottom:3px">STANDARD</div>
+              <input type="number" id="evalStd" min="0" step="0.1" placeholder="10"
+                style="width:100%;background:var(--bg3);border:1px solid rgba(201,244,60,.2);border-radius:var(--r);padding:6px 8px;font-size:11px;color:var(--text);font-family:'DM Mono',monospace;outline:none"/>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:8px;color:var(--blue);font-family:'DM Mono',monospace;margin-bottom:3px">ELITE</div>
+              <input type="number" id="evalElite" min="0" step="0.1" placeholder="15"
+                style="width:100%;background:var(--bg3);border:1px solid rgba(94,176,255,.2);border-radius:var(--r);padding:6px 8px;font-size:11px;color:var(--text);font-family:'DM Mono',monospace;outline:none"/>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:8px;color:var(--orange);font-family:'DM Mono',monospace;margin-bottom:3px">PRO</div>
+              <input type="number" id="evalPro" min="0" step="0.1" placeholder="20"
+                style="width:100%;background:var(--bg3);border:1px solid rgba(255,140,66,.2);border-radius:var(--r);padding:6px 8px;font-size:11px;color:var(--text);font-family:'DM Mono',monospace;outline:none"/>
+            </div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+            <input type="checkbox" id="evalMayorMejor" checked style="accent-color:var(--lime);width:13px;height:13px;cursor:pointer"/>
+            <label for="evalMayorMejor" style="font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);cursor:pointer">
+              Más es mejor (más reps o más tiempo = mejor)
+            </label>
+          </div>
+
+          <button class="banner-btn lime" onclick="_agregarEjercicioEval()" style="width:100%;padding:8px;text-align:center">
+            + Agregar ejercicio
+          </button>
+
+          <div style="margin-top:14px">
+            <div style="font-size:9px;color:var(--muted2);font-family:'DM Mono',monospace;margin-bottom:8px;letter-spacing:.08em">
+              EJERCICIOS AGREGADOS (${_evalEjs.length})
+            </div>
+            ${exListHtml}
+          </div>
+        </div>
+      </div>
+
+      <div class="form-footer" style="margin:16px 28px 32px">
+        <button class="banner-btn lime" id="btnFinalizar"
+          onclick="_finalizarEvaluacion(${alumnoId})"
+          style="padding:8px 24px" ${_evalEjs.length < 1 ? 'disabled' : ''}>
+          ✓ Finalizar evaluación
+        </button>
+        <span class="form-msg" id="evalMsg"></span>
+      </div>
+    </div>`;
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.autocomplete-wrap')) {
+      const l = document.getElementById('evalAutoList');
+      if (l) l.style.display = 'none';
+    }
+  });
+
+  _renderEvalRadar();
+}
+
+// ── Autocomplete ──────────────────────────────────────────────────
+window._filtrarEjercicios = function(query) {
+  const list = document.getElementById('evalAutoList');
+  if (!list) return;
+  const q = query.trim().toLowerCase();
+  const matches = q.length === 0
+    ? _ejsCache.slice(0, 20)
+    : _ejsCache.filter(e => e.nombre.toLowerCase().includes(q)).slice(0, 15);
+  if (!matches.length) { list.style.display = 'none'; return; }
+  list.innerHTML = matches.map(e =>
+    `<div class="autocomplete-item"
+      onclick="_selEjercicioEval('${e.nombre.replace(/'/g,"\\'")}','${e.uMedida||'REPETICION'}')">
+      ${e.nombre}
+      <span style="color:var(--muted2);font-size:9px;float:right">${e.uMedida||'REP'}</span>
+    </div>`
+  ).join('');
+  list.style.display = 'block';
+};
+
+window._selEjercicioEval = function(nombre, uMedida) {
+  const input   = document.getElementById('evalExInput');
+  const display = document.getElementById('evalUnidadDisplay');
+  const list    = document.getElementById('evalAutoList');
+  if (input)   input.value    = nombre;
+  if (display) display.textContent = uMedida || 'REPETICION';
+  if (list)    list.style.display  = 'none';
+  window._evalCurUnidad = uMedida || 'REPETICION';
+  document.getElementById('evalValor')?.focus();
+};
+
+// ── Agregar / eliminar ────────────────────────────────────────────
+window._agregarEjercicioEval = function() {
+  const nombre = (document.getElementById('evalExInput')?.value || '').trim();
+  const valor  = parseFloat(document.getElementById('evalValor')?.value);
+  const std    = parseFloat(document.getElementById('evalStd')?.value);
+  const elite  = parseFloat(document.getElementById('evalElite')?.value);
+  const pro    = parseFloat(document.getElementById('evalPro')?.value);
+  const mayorMejor = document.getElementById('evalMayorMejor')?.checked !== false;
+  const unidad = window._evalCurUnidad || 'REPETICION';
+
+  if (!nombre)                        { _evalMsg('Selecciona un ejercicio'); return; }
+  if (isNaN(valor) || valor < 0)      { _evalMsg('Ingresa un valor válido'); return; }
+  if (isNaN(std)||isNaN(elite)||isNaN(pro)) { _evalMsg('Completa los 3 rangos'); return; }
+  if (std >= elite || elite >= pro)   { _evalMsg('Los rangos deben ir: Standard < Elite < Pro'); return; }
+
+  _evalEjs.push({ ejercicio:nombre, unidad, valor, rangoStandard:std, rangoElite:elite, rangoPro:pro, mayorEsMejor:mayorMejor });
+  _renderEvalView(DATA_IDS[curPat]);
+};
+
+window._eliminarEjercicioEval = function(idx) {
+  _evalEjs.splice(idx, 1);
+  _renderEvalView(DATA_IDS[curPat]);
+};
+
+function _evalMsg(txt) {
+  const el = document.getElementById('evalMsg');
+  if (el) { el.style.color = 'var(--yellow)'; el.textContent = txt; }
+}
+
+// ── Normalización 0-100 (Standard=33, Elite=66, Pro=100) ─────────
+function _normalizarValor(valor, std, elite, pro, mayorEsMejor) {
+  if (!std || !elite || !pro) return null;
+  if (mayorEsMejor) {
+    if (valor >= pro)   return 100;
+    if (valor >= elite) return 66 + 34 * (valor - elite) / (pro - elite);
+    if (valor >= std)   return 33 + 33 * (valor - std)   / (elite - std);
+    return Math.max(0, 33 * valor / std);
+  } else {
+    if (valor <= pro)   return 100;
+    if (valor <= elite) return 66 + 34 * (elite - valor) / (elite - pro);
+    if (valor <= std)   return 33 + 33 * (std - valor)   / (std - elite);
+    return Math.max(0, 33 * std / valor);
+  }
+}
+
+// ── Radar ─────────────────────────────────────────────────────────
+function _renderEvalRadar() {
+  const canvas = document.getElementById('evalRadarC');
+  if (!canvas) return;
+  if (charts.evalRadar) { try { charts.evalRadar.destroy(); } catch(e){} delete charts.evalRadar; }
+
+  if (!_evalEjs.length) return; // canvas queda en blanco
+
+  const n      = _evalEjs.length;
+  const labels = _evalEjs.map(e => e.ejercicio.length > 13 ? e.ejercicio.slice(0,12)+'…' : e.ejercicio);
+  const scores = _evalEjs.map(e => _normalizarValor(e.valor, e.rangoStandard, e.rangoElite, e.rangoPro, e.mayorEsMejor) ?? 0);
+  const ref    = (v) => new Array(n).fill(v);
+
+  charts.evalRadar = new Chart(canvas, {
+    type: 'radar',
+    data: {
+      labels,
+      datasets: [
+        { label:'Pro',      data:ref(100), borderColor:'rgba(255,140,66,.4)',  borderWidth:1.5, borderDash:[5,4], backgroundColor:'transparent', pointRadius:0 },
+        { label:'Elite',    data:ref(66),  borderColor:'rgba(94,176,255,.4)', borderWidth:1.5, borderDash:[5,4], backgroundColor:'transparent', pointRadius:0 },
+        { label:'Standard', data:ref(33),  borderColor:'rgba(201,244,60,.4)', borderWidth:1.5, borderDash:[5,4], backgroundColor:'transparent', pointRadius:0 },
+        {
+          label:'Alumno', data:scores,
+          backgroundColor:'rgba(201,244,60,0.10)',
+          borderColor:'#c9f43c', borderWidth:2,
+          pointBackgroundColor: scores.map(s => s>=100?'#ff8c42':s>=66?'#5eb0ff':s>=33?'#c9f43c':'#ff5c5c'),
+          pointRadius:5, pointHoverRadius:7,
+        }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins: {
+        legend: { display:false },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              if (ctx.dataset.label !== 'Alumno') return null;
+              const ex = _evalEjs[ctx.dataIndex];
+              const s  = ctx.raw;
+              const nv = s>=100?'Pro':s>=66?'Elite':s>=33?'Standard':'Bajo el estándar';
+              return `${ex.valor} ${ex.unidad==='TIEMPO'?'seg':'reps'} — ${nv}`;
+            }
+          }
+        }
+      },
+      scales: {
+        r: {
+          min:0, max:100,
+          ticks: { stepSize:33, display:false },
+          grid:        { color:'rgba(255,255,255,0.05)' },
+          angleLines:  { color:'rgba(255,255,255,0.05)' },
+          pointLabels: { font:{ size:9, family:'Instrument Sans', weight:'600' }, color:'#7a7b85' }
+        }
+      }
+    }
+  });
+}
+
+// ── Finalizar ─────────────────────────────────────────────────────
+window._finalizarEvaluacion = async function(alumnoId) {
+  if (!_evalEjs.length) return;
+  const btn = document.getElementById('btnFinalizar');
+  const msg = document.getElementById('evalMsg');
+  if (btn) btn.disabled = true;
+  if (msg) { msg.style.color='var(--muted)'; msg.textContent='Guardando...'; }
+
+  try {
+    const r1 = await fetchJSONP(
+      APPS_SCRIPT_URL + '?action=crearEvaluacion&alumnoId=' + alumnoId +
+      '&fecha=' + encodeURIComponent(new Date().toLocaleDateString('es-CL'))
+    );
+    if (r1.error) { if(msg){msg.style.color='var(--red)';msg.textContent='⚠ '+r1.error;} if(btn)btn.disabled=false; return; }
+
+    const evalId = r1.evaluacionId;
+    for (const ex of _evalEjs) {
+      const p = [
+        'action=guardarResultadoEval',
+        'evaluacionId='  + evalId,
+        'ejercicio='     + encodeURIComponent(ex.ejercicio),
+        'unidad='        + encodeURIComponent(ex.unidad),
+        'valor='         + ex.valor,
+        'rangoStandard=' + ex.rangoStandard,
+        'rangoElite='    + ex.rangoElite,
+        'rangoPro='      + ex.rangoPro,
+        'mayorEsMejor='  + ex.mayorEsMejor,
+      ].join('&');
+      await fetchJSONP(APPS_SCRIPT_URL + '?' + p);
+    }
+
+    if (msg) { msg.style.color='var(--teal)'; msg.textContent=`✓ Evaluación guardada (${_evalEjs.length} ejercicios)`; }
+    _evalEjs = [];
+    setTimeout(() => render(), 2000);
+  } catch(e) {
+    if (msg) { msg.style.color='var(--red)'; msg.textContent='⚠ '+e.message; }
+    if (btn) btn.disabled = false;
+  }
+};
+
+// ── Historial ─────────────────────────────────────────────────────
+window._verHistorialEval = async function(alumnoId) {
+  destroyCharts();
+  document.getElementById('content').innerHTML = `
+    <div class="form-view">
+      <div class="form-header">
+        <button class="btn-back" onclick="irAEvaluacion(${alumnoId})">← Volver</button>
+        <div>
+          <div class="form-title">${curPat.trim()}</div>
+          <div class="form-sub">Historial de evaluaciones</div>
+        </div>
+      </div>
+      <div class="card" style="margin:0 0 32px">
+        <div id="historialContent" style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">Cargando...</div>
+      </div>
+    </div>`;
+
+  try {
+    const evals = await fetchJSONP(APPS_SCRIPT_URL + '?action=getEvaluaciones&alumnoId=' + alumnoId);
+    const el = document.getElementById('historialContent');
+    if (!el) return;
+    if (!Array.isArray(evals) || !evals.length) {
+      el.innerHTML = `<div style="padding:24px;text-align:center;color:var(--muted2)">Sin evaluaciones registradas</div>`;
+      return;
+    }
+    el.innerHTML = evals.slice().reverse().map(ev => `
+      <div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span style="font-size:12px;font-weight:600">${ev.fecha}</span>
+          <span style="font-size:9px;color:var(--muted2);font-family:'DM Mono',monospace">${ev.resultados.length} ejercicios</span>
+        </div>
+        ${ev.resultados.map(r => {
+          const score = _normalizarValor(r.valor, r.rangoStandard, r.rangoElite, r.rangoPro, r.mayorEsMejor);
+          const nivel = score===null?'—':score>=100?'PRO':score>=66?'ELITE':score>=33?'STD':'BAJO';
+          const col   = score===null?'var(--muted2)':score>=100?'var(--orange)':score>=66?'var(--blue)':score>=33?'var(--lime)':'var(--red)';
+          return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:10px;flex:1">${r.ejercicio}</span>
+            <span style="font-size:10px;font-family:'DM Mono',monospace;color:var(--lime)">${r.valor}<span style="font-size:8px;color:var(--muted2);margin-left:2px">${r.unidad==='TIEMPO'?'seg':'reps'}</span></span>
+            <span style="font-size:9px;font-family:'DM Mono',monospace;color:${col};font-weight:700;min-width:36px;text-align:right">${nivel}</span>
+          </div>`;
+        }).join('')}
+      </div>`).join('');
+  } catch(e) {
+    const el = document.getElementById('historialContent');
+    if (el) el.innerHTML = `<div style="color:var(--red)">⚠ ${e.message}</div>`;
+  }
+};
 
 loadData();
 </script>
