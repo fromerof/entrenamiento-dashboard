@@ -250,10 +250,116 @@ td.tiempo-badge{font-family:'DM Mono',monospace;font-size:10px;color:var(--teal)
 .btn-add-ej { width:100%; padding:7px; background:transparent; border:1px dashed var(--muted2); border-radius:var(--r); color:var(--muted2); font-size:10px; font-family:'DM Mono',monospace; cursor:pointer; transition:all .15s; margin-top:6px; }
 .btn-add-ej:hover { border-color:var(--lime); color:var(--lime); }
 .unsaved-dot { width:6px; height:6px; border-radius:50%; background:var(--yellow); display:inline-block; margin-left:5px; vertical-align:middle; }
+
+/* ── RESPONSIVE ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  html, body { overflow: hidden; }
+
+  /* Sidebar como drawer */
+  #sidebar {
+    position: fixed;
+    left: -200px;
+    top: 0;
+    height: 100vh;
+    z-index: 1000;
+    transition: left .25s ease;
+    box-shadow: 4px 0 20px rgba(0,0,0,.5);
+  }
+  #sidebar.open { left: 0; }
+
+  /* Overlay cuando sidebar abierto */
+  #sb-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+    z-index: 999;
+  }
+  #sb-overlay.open { display: block; }
+
+  /* Botón hamburguesa */
+  #btn-menu {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    z-index: 998;
+    width: 36px;
+    height: 36px;
+    background: var(--bg2);
+    border: 1px solid var(--bord2);
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--text);
+  }
+
+  /* Main ocupa todo el ancho */
+  #main { width: 100%; padding-top: 0; }
+
+  /* Header */
+  .top-bar { padding: 56px 14px 0; gap: 8px; }
+  .pat-name { font-size: 20px; }
+  .week-tabs { gap: 4px; }
+  .wtab { padding: 4px 10px; font-size: 9px; }
+
+  /* Banner */
+  #zonaBanner { margin: 8px 14px 0; }
+
+  /* Stats: 2 columnas */
+  .stats-row {
+    grid-template-columns: 1fr 1fr;
+    padding: 12px 14px 0;
+    gap: 8px;
+  }
+  .stat { padding: 12px 12px; }
+  .stat-val { font-size: 16px; }
+
+  /* Grids: 1 columna */
+  .grid-2 { grid-template-columns: 1fr; padding: 10px 14px 0; gap: 10px; }
+  .eval-grid { grid-template-columns: 1fr; padding: 0 14px; }
+
+  /* Charts más pequeños */
+  .chart-wrap { height: 180px; }
+  .prog-wrap { height: 160px; }
+  .eval-radar-wrap { height: 240px; }
+
+  /* Progress */
+  .progress-wrap { padding: 0 14px; }
+
+  /* Table */
+  .table-wrap { padding: 10px 14px 24px; }
+  table { font-size: 10px; }
+  thead th { padding: 5px 6px; font-size: 8px; }
+  tbody td { padding: 5px 6px; }
+
+  /* Forms */
+  .form-view { padding: 0; }
+  .form-header { padding: 56px 14px 14px; }
+  .card { margin: 0 14px; padding: 14px; }
+
+  /* Tabla editable */
+  .ej-table { font-size: 10px; }
+  .ej-table th { font-size: 8px; padding: 5px 4px; }
+  .dia-tabs { flex-wrap: wrap; }
+
+  /* Evaluaciones */
+  .eval-grid .card:first-child { order: 2; } /* radar abajo */
+  .eval-grid .card:last-child  { order: 1; } /* form arriba */
+}
+
+@media (max-width: 400px) {
+  .stats-row { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat-val { font-size: 14px; }
+  .pat-name { font-size: 17px; }
+}
 </style>
 </head>
 <body>
-
+<div id="sb-overlay" onclick="toggleMenu()"></div>
+<button id="btn-menu" onclick="toggleMenu()">☰</button>
 <div id="sidebar">
   <div class="sb-logo">
     <div class="sb-label">Training</div>
@@ -1851,6 +1957,20 @@ window._verHistorialEval = async function(alumnoId) {
     if (el) el.innerHTML = `<div style="color:var(--red)">⚠ ${e.message}</div>`;
   }
 };
+
+  // ── Mobile sidebar toggle ─────────────────────────────────────────
+function toggleMenu() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sb-overlay').classList.toggle('open');
+}
+
+// Hide menu button on desktop
+function _checkMenuBtn() {
+  const btn = document.getElementById('btn-menu');
+  if (btn) btn.style.display = window.innerWidth <= 768 ? 'flex' : 'none';
+}
+window.addEventListener('resize', _checkMenuBtn);
+_checkMenuBtn();
 
 loadData();
 </script>
