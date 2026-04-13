@@ -370,8 +370,9 @@ td.tiempo-badge{font-family:'DM Mono',monospace;font-size:10px;color:var(--teal)
     </div>
   </div>
   <div class="sb-refresh">
-    <button class="btn-refresh" id="btnRefresh" onclick="loadData()" disabled>↻ Actualizar</button>
-  </div>
+  <button class="btn-refresh" id="btnRefresh" onclick="loadData()" disabled>↻ Actualizar</button>
+  <button class="btn-refresh" onclick="_modalNuevoAlumno()" style="margin-top:6px;border-color:var(--lime);color:var(--lime)">+ Nuevo alumno</button>
+</div>
   <div class="sb-search">
     <input type="text" id="srch" placeholder="Buscar alumno..." oninput="filterList(this.value)" disabled>
   </div>
@@ -1998,7 +1999,55 @@ function _checkMenuBtn() {
 window.addEventListener('resize', _checkMenuBtn);
 _checkMenuBtn();
 
+// ── New patient modal ─────────────────────────────────────────────
+window._modalNuevoAlumno = function() {
+  const modal = document.getElementById('modal-nuevo-alumno');
+  modal.style.display = 'flex';
+  document.getElementById('inputNuevoAlumno').value = '';
+  document.getElementById('msgNuevoAlumno').textContent = '';
+  setTimeout(() => document.getElementById('inputNuevoAlumno').focus(), 100);
+};
+
+window._cerrarModalAlumno = function() {
+  document.getElementById('modal-nuevo-alumno').style.display = 'none';
+};
+
+window._crearNuevoAlumno = async function() {
+  const nombre = (document.getElementById('inputNuevoAlumno').value || '').trim();
+  const msg    = document.getElementById('msgNuevoAlumno');
+  if (!nombre) { msg.style.color='var(--yellow)'; msg.textContent='Ingresa un nombre'; return; }
+
+  msg.style.color = 'var(--muted)'; msg.textContent = 'Creando...';
+
+  try {
+    const r = await fetchJSONP(APPS_SCRIPT_URL + '?action=crearPaciente&nombre=' + encodeURIComponent(nombre));
+    if (r.error) { msg.style.color='var(--red)'; msg.textContent='⚠ ' + r.error; return; }
+    msg.style.color = 'var(--teal)';
+    msg.textContent = '✓ Alumno creado correctamente';
+    setTimeout(() => {
+      _cerrarModalAlumno();
+      loadData(); // reload to show new patient in sidebar
+    }, 1500);
+  } catch(e) {
+    msg.style.color = 'var(--red)'; msg.textContent = '⚠ ' + e.message;
+  }
+};
+  
 loadData();
 </script>
+<div id="modal-nuevo-alumno" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--bord2);border-radius:var(--r2);padding:24px;width:320px;max-width:90vw">
+    <div style="font-family:'Unbounded',sans-serif;font-size:14px;font-weight:900;margin-bottom:6px">Nuevo alumno</div>
+    <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:16px">Se creará una pestaña nueva desde la plantilla base</div>
+    <input type="text" id="inputNuevoAlumno" placeholder="Nombre completo..."
+      style="width:100%;background:var(--bg3);border:1px solid var(--bord2);border-radius:var(--r);padding:9px 12px;font-size:12px;color:var(--text);font-family:'DM Mono',monospace;outline:none;margin-bottom:12px"
+      onkeydown="if(event.key==='Enter')_crearNuevoAlumno()"/>
+    <div style="display:flex;gap:8px">
+      <button class="banner-btn lime" onclick="_crearNuevoAlumno()" style="flex:1;padding:8px;text-align:center">Crear alumno</button>
+      <button class="banner-btn ghost" onclick="_cerrarModalAlumno()" style="padding:8px 14px">Cancelar</button>
+    </div>
+    <div id="msgNuevoAlumno" style="margin-top:10px;font-size:10px;font-family:'DM Mono',monospace"></div>
+  </div>
+</div>
 </body>
 </html>
