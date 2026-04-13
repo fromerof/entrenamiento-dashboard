@@ -480,7 +480,7 @@ async function crearVacia(alumnoId, newWeek) {
     if (r.error && !r.sesionId) { setBanner('<div class="banner err">⚠ '+r.error+'</div>'); return; }
     _inyectarSemana(r.sesionId, newWeek);
     curWeek = newWeek;
-    irAFormulario(r.sesionId, newWeek);
+    irATablaEjercicios(r.sesionId, newWeek);
   } catch(e) { setBanner('<div class="banner err">⚠ '+e.message+'</div>'); }
 }
 
