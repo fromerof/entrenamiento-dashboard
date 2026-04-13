@@ -229,6 +229,27 @@ td.tiempo-badge{font-family:'DM Mono',monospace;font-size:10px;color:var(--teal)
 .eval-ex-name { font-size:10px; font-weight:500; flex:1; }
 .eval-ex-del { background:transparent; border:none; color:var(--muted2); cursor:pointer; font-size:16px; line-height:1; padding:0 2px; transition:color .1s; }
 .eval-ex-del:hover { color:var(--red); }
+
+/* ── TABLA EDITABLE EJERCICIOS ───────────────────────────────────── */
+.dia-tabs { display:flex; gap:5px; margin-bottom:14px; }
+.dia-tab { padding:5px 14px; font-size:10px; font-weight:700; border-radius:20px; border:1px solid var(--bord2); cursor:pointer; transition:all .12s; color:var(--muted); font-family:'DM Mono',monospace; background:transparent; }
+.dia-tab:hover { border-color:var(--lime); color:var(--lime); }
+.dia-tab.active { background:var(--lime); border-color:var(--lime); color:#0b0c0e; }
+.ej-table { width:100%; border-collapse:collapse; font-size:11px; }
+.ej-table th { padding:6px 8px; font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:.1em; color:var(--muted2); text-align:left; border-bottom:1px solid var(--border); font-family:'DM Mono',monospace; }
+.ej-table td { padding:4px 4px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.ej-input { width:100%; background:transparent; border:1px solid transparent; border-radius:6px; padding:5px 7px; font-size:11px; color:var(--text); font-family:'DM Mono',monospace; outline:none; transition:all .12s; }
+.ej-input:focus { background:var(--bg3); border-color:var(--bord2); }
+.ej-input:hover { background:var(--bg3); }
+.ej-select { width:100%; background:transparent; border:1px solid transparent; border-radius:6px; padding:5px 4px; font-size:10px; color:var(--muted); font-family:'DM Mono',monospace; outline:none; cursor:pointer; transition:all .12s; }
+.ej-select:focus, .ej-select:hover { background:var(--bg3); border-color:var(--bord2); color:var(--text); }
+.ej-ac-wrap { position:relative; }
+.ej-ac-list { position:absolute; top:100%; left:0; min-width:260px; background:var(--bg3); border:1px solid var(--bord2); border-radius:var(--r); z-index:200; max-height:160px; overflow-y:auto; box-shadow:0 4px 20px rgba(0,0,0,.4); }
+.ej-ac-item { padding:6px 10px; font-size:10px; font-family:'DM Mono',monospace; color:var(--muted); cursor:pointer; border-bottom:1px solid var(--border); transition:background .1s; display:flex; justify-content:space-between; align-items:center; }
+.ej-ac-item:hover { background:var(--bg4); color:var(--text); }
+.btn-add-ej { width:100%; padding:7px; background:transparent; border:1px dashed var(--muted2); border-radius:var(--r); color:var(--muted2); font-size:10px; font-family:'DM Mono',monospace; cursor:pointer; transition:all .15s; margin-top:6px; }
+.btn-add-ej:hover { border-color:var(--lime); color:var(--lime); }
+.unsaved-dot { width:6px; height:6px; border-radius:50%; background:var(--yellow); display:inline-block; margin-left:5px; vertical-align:middle; }
 </style>
 </head>
 <body>
@@ -817,7 +838,11 @@ function render() {
     ${progressHtml}
     <div class="table-wrap">
       <div class="card">
-        <div class="card-title">Ejercicios — Semana ${curWeek}</div>
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Ejercicios — Semana ${curWeek}</span>
+          ${wd.sesionId ? `<button class="banner-btn ghost" style="font-size:9px;padding:4px 10px"
+            onclick="irATablaEjercicios(${wd.sesionId},${curWeek})">✎ Editar</button>` : ''}
+        </div>
         ${buildTable(exs)}
       </div>
     </div>`;
@@ -1063,6 +1088,329 @@ function buildTable(exs) {
     </div>`;
   }).join('');
 }
+
+// ─── TABLA EDITABLE DE EJERCICIOS ────────────────────────────────
+
+const TIPOS_LIST = ['EMPUJE','TRACCION','DOM. RODILLA','DOM. CADERA',
+                    'POTENCIA','ACCESORIO','MOVILIDAD','GLUTEO','METABOLICO','SIN CATEGORÍA'];
+
+let _tablaState    = {};  // { dia: [{id,orden,ejercicio,tipo,series,repet_raw,carga_raw,u_medida}] }
+let _tablaCurDia   = 1;
+let _tablaSesionId = null;
+let _tablaWeek     = null;
+let _tablaUnsaved  = false;
+
+function irATablaEjercicios(sesionId, week) {
+  destroyCharts();
+  _tablaSesionId = sesionId;
+  _tablaWeek     = week;
+  _tablaCurDia   = 1;
+  _tablaUnsaved  = false;
+
+  // Load exercises from DATA into editable state
+  const wd  = (DATA[curPat] || []).find(w => w.sesionId === sesionId);
+  const exs = wd ? (wd.exercises || []) : [];
+
+  _tablaState = {};
+  [1,2,3,4].forEach(dia => {
+    _tablaState[dia] = exs
+      .filter(e => e.dia === dia)
+      .sort((a,b) => (a.orden||0) - (b.orden||0))
+      .map(e => ({ ...e }));
+  });
+
+  // Load ejercicios cache if empty
+  if (!_ejsCache.length) {
+    fetchJSONP(APPS_SCRIPT_URL + '?action=getEjercicios')
+      .then(data => { _ejsCache = Array.isArray(data) ? data : []; })
+      .catch(() => {});
+  }
+
+  _renderTablaView();
+}
+
+function _renderTablaView() {
+  const diaTabs = [1,2,3,4].map(d => {
+    const count = (_tablaState[d] || []).length;
+    return `<button class="dia-tab${d === _tablaCurDia ? ' active' : ''}"
+      onclick="_switchDia(${d})">
+      Día ${d}
+      <span style="font-size:8px;color:${d===_tablaCurDia?'#0b0c0e':'var(--muted2)'};margin-left:4px">${count}</span>
+    </button>`;
+  }).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="form-view">
+      <div class="form-header">
+        <button class="btn-back" onclick="_confirmarSalir()">← Volver</button>
+        <div>
+          <div class="form-title">${curPat.trim()}</div>
+          <div class="form-sub">Semana ${_tablaWeek} — Editar ejercicios</div>
+        </div>
+      </div>
+      <div class="card" style="margin:0 0 32px">
+        <div class="dia-tabs">${diaTabs}</div>
+        <div id="diaTablaContent"></div>
+        <div class="form-footer" style="margin-top:14px">
+          <button class="banner-btn lime" id="btnGuardarDia"
+            onclick="_guardarDia()">
+            Guardar Día ${_tablaCurDia}
+          </button>
+          <span class="form-msg" id="tablaMsg"></span>
+          <span id="unsavedIndicator" style="display:none">
+            <span class="unsaved-dot"></span>
+            <span style="font-size:9px;color:var(--yellow);font-family:'DM Mono',monospace;margin-left:4px">Cambios sin guardar</span>
+          </span>
+        </div>
+      </div>
+    </div>`;
+
+  _renderDiaTabla();
+
+  document.addEventListener('click', function _closeAc(e) {
+    if (!e.target.closest('.ej-ac-wrap')) {
+      document.querySelectorAll('.ej-ac-list').forEach(l => l.style.display = 'none');
+    }
+  });
+}
+
+function _renderDiaTabla() {
+  const rows = _tablaState[_tablaCurDia] || [];
+  const el   = document.getElementById('diaTablaContent');
+  if (!el) return;
+
+  const tiposOptions = TIPOS_LIST.map(t =>
+    `<option value="${t}">${t}</option>`
+  ).join('');
+
+  const tbody = rows.map((ex, i) => {
+    const esT = (ex.u_medida || '').toUpperCase() === 'TIEMPO';
+    return `<tr id="ejrow-${i}">
+      <td style="min-width:200px">
+        <div class="ej-ac-wrap">
+          <input class="ej-input" value="${ex.ejercicio || ''}"
+            placeholder="Ejercicio..."
+            oninput="_ejAcFilter(this,${i})"
+            onfocus="_ejAcFilter(this,${i})"
+            onchange="_setEjField(${i},'ejercicio',this.value);_markUnsaved()"
+            autocomplete="off"/>
+          <div class="ej-ac-list" id="ejac-${i}" style="display:none"></div>
+        </div>
+      </td>
+      <td style="min-width:130px">
+        <select class="ej-select" onchange="_setEjField(${i},'tipo',this.value);_markUnsaved()">
+          ${TIPOS_LIST.map(t => `<option value="${t}"${ex.tipo===t?' selected':''}>${t}</option>`).join('')}
+        </select>
+      </td>
+      <td style="width:60px">
+        <input class="ej-input" type="number" min="1" value="${ex.series||''}"
+          placeholder="—"
+          onchange="_setEjField(${i},'series',this.value);_markUnsaved()"
+          style="text-align:center"/>
+      </td>
+      <td style="width:80px">
+        <input class="ej-input" value="${ex.repet_raw||''}"
+          placeholder="${esT?'seg':'reps'}"
+          onchange="_setEjField(${i},'repet_raw',this.value);_markUnsaved()"
+          style="text-align:center"/>
+      </td>
+      <td style="width:80px">
+        <input class="ej-input" value="${ex.carga_raw||''}"
+          placeholder="kg / PC"
+          onchange="_setEjField(${i},'carga_raw',this.value);_markUnsaved()"
+          style="text-align:center"/>
+      </td>
+      <td style="width:32px;text-align:center">
+        <button class="eval-ex-del" onclick="_eliminarFilaEj(${i})">×</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div style="overflow-x:auto">
+      <table class="ej-table">
+        <thead><tr>
+          <th>Ejercicio</th><th>Tipo</th>
+          <th style="text-align:center">Series</th>
+          <th style="text-align:center">Reps/Seg</th>
+          <th style="text-align:center">Carga</th>
+          <th></th>
+        </tr></thead>
+        <tbody>${tbody || `<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--muted2);font-family:'DM Mono',monospace;font-size:10px">Sin ejercicios — agrega uno abajo</td></tr>`}</tbody>
+      </table>
+    </div>
+    <button class="btn-add-ej" onclick="_agregarFilaEj()">+ Agregar ejercicio</button>`;
+}
+
+// ── Field helpers ─────────────────────────────────────────────────
+window._setEjField = function(idx, field, value) {
+  if (!_tablaState[_tablaCurDia][idx]) return;
+  _tablaState[_tablaCurDia][idx][field] = value;
+};
+
+window._markUnsaved = function() {
+  _tablaUnsaved = true;
+  const ind = document.getElementById('unsavedIndicator');
+  if (ind) ind.style.display = 'inline-flex';
+};
+
+window._agregarFilaEj = function() {
+  const rows  = _tablaState[_tablaCurDia] || [];
+  const orden = rows.length + 1;
+  _tablaState[_tablaCurDia].push({
+    id: null, dia: _tablaCurDia, orden,
+    ejercicio:'', tipo:'ACCESORIO',
+    series:'', repet_raw:'', carga_raw:'',
+    u_medida:'REPETICION',
+  });
+  _markUnsaved();
+  _renderDiaTabla();
+  // Focus the new exercise input
+  const inputs = document.querySelectorAll('.ej-input');
+  if (inputs.length) inputs[inputs.length - 5]?.focus();
+};
+
+window._eliminarFilaEj = async function(idx) {
+  const ex = _tablaState[_tablaCurDia][idx];
+  if (ex && ex.id) {
+    // Already saved in DB — delete from server
+    try {
+      await fetchJSONP(APPS_SCRIPT_URL + '?action=eliminarEjercicio&id=' + ex.id);
+    } catch(e) {}
+  }
+  _tablaState[_tablaCurDia].splice(idx, 1);
+  // Re-number orden
+  _tablaState[_tablaCurDia].forEach((e,i) => e.orden = i + 1);
+  _markUnsaved();
+  _renderDiaTabla();
+};
+
+// ── Autocomplete in table ─────────────────────────────────────────
+window._ejAcFilter = function(input, rowIdx) {
+  const list = document.getElementById('ejac-' + rowIdx);
+  if (!list) return;
+  const q = input.value.trim().toLowerCase();
+  const matches = q.length === 0
+    ? _ejsCache.slice(0, 12)
+    : _ejsCache.filter(e => e.nombre.toLowerCase().includes(q)).slice(0, 10);
+  if (!matches.length) { list.style.display = 'none'; return; }
+  list.innerHTML = matches.map(e =>
+    `<div class="ej-ac-item"
+      onclick="_ejAcSelect(${rowIdx},'${e.nombre.replace(/'/g,"\\'")}','${e.tipo}','${e.uMedida||'REPETICION'}')">
+      <span>${e.nombre}</span>
+      <span style="font-size:9px;color:var(--muted2)">${e.uMedida||'REP'}</span>
+    </div>`
+  ).join('');
+  list.style.display = 'block';
+};
+
+window._ejAcSelect = function(rowIdx, nombre, tipo, uMedida) {
+  _tablaState[_tablaCurDia][rowIdx].ejercicio = nombre;
+  _tablaState[_tablaCurDia][rowIdx].tipo      = tipo;
+  _tablaState[_tablaCurDia][rowIdx].u_medida  = uMedida;
+  _markUnsaved();
+  _renderDiaTabla();
+};
+
+// ── Switch day (warn if unsaved) ──────────────────────────────────
+window._switchDia = function(dia) {
+  if (_tablaUnsaved) {
+    if (!confirm(`Tienes cambios sin guardar en Día ${_tablaCurDia}. ¿Guardar antes de continuar?`)) {
+      _tablaCurDia = dia;
+      _tablaUnsaved = false;
+      _renderTablaView();
+      return;
+    }
+    _guardarDia(true).then(() => {
+      _tablaCurDia  = dia;
+      _tablaUnsaved = false;
+      _renderTablaView();
+    });
+    return;
+  }
+  _tablaCurDia = dia;
+  _renderTablaView();
+};
+
+window._confirmarSalir = function() {
+  if (_tablaUnsaved) {
+    if (!confirm(`Tienes cambios sin guardar en Día ${_tablaCurDia}. ¿Salir sin guardar?`)) return;
+  }
+  render();
+};
+
+// ── Simple vol/carga calculation ──────────────────────────────────
+function _calcVolCarga(series, repetRaw, cargaRaw) {
+  const s = parseInt(series);
+  const r = parseFloat(repetRaw);
+  const c = parseFloat(cargaRaw);
+  const volEf     = (!isNaN(s) && !isNaN(r)) ? s * r : '';
+  const cargaTotal= (!isNaN(s) && !isNaN(r) && !isNaN(c)) ? Math.round(s * r * c) : '';
+  return { volEf, cargaTotal };
+}
+
+// ── Save day ──────────────────────────────────────────────────────
+window._guardarDia = async function(silent = false) {
+  const btn = document.getElementById('btnGuardarDia');
+  const msg = document.getElementById('tablaMsg');
+  const rows = (_tablaState[_tablaCurDia] || []).filter(e => e.ejercicio.trim());
+
+  if (!rows.length) {
+    if (!silent && msg) { msg.style.color='var(--yellow)'; msg.textContent='Sin ejercicios para guardar.'; }
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  if (!silent && msg) { msg.style.color='var(--muted)'; msg.textContent='Guardando...'; }
+
+  let ok = 0;
+  for (let i = 0; i < rows.length; i++) {
+    const ex     = rows[i];
+    const orden  = i + 1;
+    ex.orden     = orden;
+    const { volEf, cargaTotal } = _calcVolCarga(ex.series, ex.repet_raw, ex.carga_raw);
+
+    const params = [
+      'action=guardarEjercicio',
+      'sesionId='   + _tablaSesionId,
+      'dia='        + _tablaCurDia,
+      'orden='      + orden,
+      'ejercicio='  + encodeURIComponent(ex.ejercicio),
+      'tipo='       + encodeURIComponent(ex.tipo || ''),
+      'series='     + (ex.series || ''),
+      'repetRaw='   + encodeURIComponent(ex.repet_raw || ''),
+      'cargaRaw='   + encodeURIComponent(ex.carga_raw || ''),
+      'volEf='      + volEf,
+      'cargaTotal=' + cargaTotal,
+      'uMedida='    + encodeURIComponent(ex.u_medida || 'REPETICION'),
+    ].join('&');
+
+    try {
+      const r = await fetchJSONP(APPS_SCRIPT_URL + '?' + params);
+      if (r.ok) { ex.id = r.id; ok++; }
+    } catch(e) {}
+  }
+
+  // Update DATA local so render() reflects changes without reload
+  const wd = (DATA[curPat] || []).find(w => w.sesionId === _tablaSesionId);
+  if (wd) {
+    wd.exercises = wd.exercises.filter(e => e.dia !== _tablaCurDia);
+    rows.forEach((ex,i) => wd.exercises.push({ ...ex, dia: _tablaCurDia, orden: i+1 }));
+  }
+
+  _tablaUnsaved = false;
+  const ind = document.getElementById('unsavedIndicator');
+  if (ind) ind.style.display = 'none';
+
+  if (!silent && msg) {
+    msg.style.color = 'var(--teal)';
+    msg.textContent = `✓ ${ok} ejercicio(s) guardados`;
+    if (btn) btn.disabled = false;
+    setTimeout(() => { if(msg) msg.textContent=''; }, 3000);
+  }
+  if (btn) btn.disabled = false;
+};
+
 // ─── MÓDULO EVALUACIONES ─────────────────────────────────────────
 
 let _evalEjs  = [];   // ejercicios de la evaluación en progreso
