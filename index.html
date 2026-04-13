@@ -1288,23 +1288,48 @@ window._eliminarFilaEj = async function(idx) {
 
 // ── Autocomplete in table ─────────────────────────────────────────
 window._ejAcFilter = function(input, rowIdx) {
-  const list = document.getElementById('ejac-' + rowIdx);
-  if (!list) return;
+  // Remove any existing floating dropdown
+  const old = document.getElementById('ej-ac-floating');
+  if (old) old.remove();
+
   const q = (input.value || '').trim().toLowerCase();
   const matches = q.length === 0
     ? _ejsCache.slice(0, 12)
     : _ejsCache.filter(e => e.nombre.toLowerCase().includes(q)).slice(0, 10);
-  
-  if (!matches.length) { list.style.display = 'none'; return; }
-  
+
+  if (!matches.length) return;
+
+  // Build floating dropdown anchored to input position
+  const rect = input.getBoundingClientRect();
+  const list = document.createElement('div');
+  list.id = 'ej-ac-floating';
+  list.className = 'ej-ac-list';
+  list.style.cssText = `
+    position:fixed;
+    top:${rect.bottom + 2}px;
+    left:${rect.left}px;
+    width:${Math.max(rect.width, 260)}px;
+    z-index:9999;
+    display:block;
+  `;
+
   list.innerHTML = matches.map(e =>
     `<div class="ej-ac-item"
-      onmousedown="_ejAcSelect(${rowIdx},'${e.nombre.replace(/'/g,"\\'")}','${e.tipo}','${e.uMedida||'REPETICION'}')">
+      onmousedown="event.preventDefault();_ejAcSelect(${rowIdx},'${e.nombre.replace(/'/g,"\\'")}','${e.tipo}','${e.uMedida||'REPETICION'}')">
       <span>${e.nombre}</span>
       <span style="font-size:9px;color:var(--muted2)">${e.uMedida||'REP'}</span>
     </div>`
   ).join('');
-  list.style.display = 'block';
+
+  document.body.appendChild(list);
+
+  // Close on blur
+  input.onblur = () => {
+    setTimeout(() => {
+      const fl = document.getElementById('ej-ac-floating');
+      if (fl) fl.remove();
+    }, 150);
+  };
 };
 
 window._ejAcSelect = function(rowIdx, nombre, tipo, uMedida) {
