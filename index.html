@@ -1309,6 +1309,13 @@ function _renderDiaTabla() {
           ${TIPOS_LIST.map(t => `<option value="${t}"${ex.tipo===t?' selected':''}>${t}</option>`).join('')}
         </select>
       </td>
+      <td style="width:70px;text-align:center">
+        <button onclick="_toggleUMedida(${i})"
+          style="padding:3px 8px;font-size:9px;font-family:'DM Mono',monospace;border-radius:20px;cursor:pointer;font-weight:700;border:1px solid;transition:all .12s;
+          ${esT ? 'background:rgba(77,255,195,.1);border-color:var(--teal);color:var(--teal)' : 'background:transparent;border-color:var(--bord2);color:var(--muted)'}">
+          ${esT ? 'TIEMPO' : 'REP'}
+        </button>
+      </td>
       <td style="width:60px">
         <input class="ej-input" type="number" min="1" value="${ex.series||''}"
           placeholder="—"
@@ -1338,17 +1345,25 @@ function _renderDiaTabla() {
       <table class="ej-table">
         <thead><tr>
           <th>Ejercicio</th><th>Tipo</th>
+          <th style="text-align:center">Unidad</th>
           <th style="text-align:center">Series</th>
           <th style="text-align:center">Reps/Seg</th>
           <th style="text-align:center">Carga</th>
           <th></th>
         </tr></thead>
-        <tbody>${tbody || `<tr><td colspan="6" style="padding:20px;text-align:center;color:var(--muted2);font-family:'DM Mono',monospace;font-size:10px">Sin ejercicios — agrega uno abajo</td></tr>`}</tbody>
+        <tbody>${tbody || `<tr><td colspan="7" style="padding:20px;text-align:center;color:var(--muted2);font-family:'DM Mono',monospace;font-size:10px">Sin ejercicios — agrega uno abajo</td></tr>`}</tbody>
       </table>
     </div>
     <button class="btn-add-ej" onclick="_agregarFilaEj()">+ Agregar ejercicio</button>`;
 }
-
+  
+window._toggleUMedida = function(idx) {
+  const ex = _tablaState[_tablaCurDia][idx];
+  if (!ex) return;
+  ex.u_medida = ex.u_medida === 'TIEMPO' ? 'REPETICION' : 'TIEMPO';
+  _markUnsaved();
+  _renderDiaTabla();
+};
 // ── Field helpers ─────────────────────────────────────────────────
 window._setEjField = function(idx, field, value) {
   if (!_tablaState[_tablaCurDia][idx]) return;
@@ -1528,6 +1543,17 @@ window._guardarDia = async function(silent = false) {
     try {
       const r = await fetchJSONP(APPS_SCRIPT_URL + '?' + params);
       if (r.ok) { ex.id = r.id; ok++; }
+      
+      // If exercise not in cache, add to master
+      const enCache = _ejsCache.some(e => e.nombre.toUpperCase() === ex.ejercicio.toUpperCase());
+      if (!enCache && ex.ejercicio.trim()) {
+        fetchJSONP(APPS_SCRIPT_URL + '?action=agregarEjercicioMaster' +
+          '&nombre='  + encodeURIComponent(ex.ejercicio) +
+          '&tipo='    + encodeURIComponent(ex.tipo || 'ACCESORIO') +
+          '&uMedida=' + encodeURIComponent(ex.u_medida || 'REPETICION')
+        ).catch(() => {});
+        _ejsCache.push({ nombre: ex.ejercicio, tipo: ex.tipo || 'ACCESORIO', uMedida: ex.u_medida || 'REPETICION' });
+      }
     } catch(e) {}
   }
 
